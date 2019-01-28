@@ -21,11 +21,13 @@
  * open_and_read() - open file at @from and copy its content to @to
  * @from: source file path
  * @to: destination buffer
- * @maxlen: maximum capacity of the @to buffer
+ * @bufsiz: maximum capacity of the @to buffer
  *
  * open_and_read() returns count of characters copied, -1 if internal calls
- * failed.
+ * failed or read content has filled buffer, which will be bufsiz - 1 characters
+ * from the file @from and a null character. On the later case, a truncated
+ * version will be left in @to.
  */
-ssize_t open_and_read(const char *from, char *to, size_t maxlen);
+ssize_t open_and_read(const char *from, char *to, size_t bufsiz);
 
 #endif
