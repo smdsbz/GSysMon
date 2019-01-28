@@ -10,8 +10,8 @@
 char *sysmon_get_hostname(void);
 
 struct uptime {
-  double    uptime;
-  double    idle;
+  double    uptime;     // in seconds
+  double    idle;       // summed idle time in seconds
 };
 /**
  * sysmon_get_uptime() - get uptime from ``/proc/uptime``
@@ -20,5 +20,21 @@ struct uptime {
  * doubles, uptime and idle time (in seconds).
  */
 struct uptime *sysmon_get_uptime(void);
+
+/**
+ * sysmon_convert_uptime_to_boottime() - converts @uptime to system boot time
+ * @uptime: system uptime
+ *
+ * Returns a statically allocated string on success, else returns NULL.
+ */
+char *sysmon_convert_uptime_to_str(double uptime);
+
+/**
+ * sysmon_get_system_version() - get system version info from
+ * ``/proc/sys/kernel/osrelease``
+ *
+ * Returns a statically allocated string on success, otherwise returns NULL.
+ */
+char *sysmon_get_system_version(void);
 
 #endif

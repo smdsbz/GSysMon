@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "../include/utils.h"
 
@@ -22,5 +23,23 @@ ssize_t open_and_read(const char *from, char *to, size_t bufsiz) {
         return -1;
     }
     return retval;
+}
+
+int freadline(FILE *fp, char *to, size_t bufsiz) {
+    static char fmt[32];
+    // NOTE: scanf-family adds '\0' to output string, therefore using bufsiz - 1
+    sprintf(fmt, "%%%lu[^\n]\n", bufsiz - 1);
+    int retval = fscanf(fp, fmt, to);
+    if (retval != 1) {
+        return -1;
+    }
+    ssize_t len = strlen(to); 
+    if (len == 0) {
+        return 0;
+    }
+    if (len == bufsiz - 1) {
+        return -2;
+    }
+    return 1;
 }
 
