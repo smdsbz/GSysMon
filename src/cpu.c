@@ -8,6 +8,8 @@
 #include "../include/cpu.h"
 
 
+/******* Parsing Helpers *******/
+
 struct key_value {
     char   *key;
     char   *value;
@@ -35,6 +37,8 @@ static struct key_value *parse_line(const char *in) {
     }
     return &kv;
 }
+
+/******* Single Processor *******/
 
 struct cpuinfo *sysmon_get_cpuinfo(int processor) {
     static struct cpuinfo cpuinfo;
@@ -93,6 +97,8 @@ struct cpuinfo *sysmon_get_cpuinfo(int processor) {
     return &cpuinfo;
 }
 
+/******* Multiple Processors *******/
+
 static int _get_processor_count(void) {
     int proc_cnt = 0;
     FILE *fp;
@@ -111,6 +117,8 @@ static int _get_processor_count(void) {
     fclose(fp);
     return proc_cnt;
 }
+
+/******* struct cpusinfo Helpers *******/
 
 int cpusinfo_init(void) {
     int retval;
@@ -137,6 +145,8 @@ void cpusinfo_del(void) {
     memset(&__cpusinfo, 0, sizeof(struct cpusinfo));
     return;
 }
+
+/******* Module Main Interfaces *******/
 
 struct cpusinfo *sysmon_get_cpusinfo(void) {
     for (int idx = 0; idx != __cpusinfo.processor_count; ++idx) {

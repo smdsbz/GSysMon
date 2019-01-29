@@ -13,6 +13,7 @@ struct cpuinfo {
 static inline void cpuinfocpy(struct cpuinfo *dst,
                               const struct cpuinfo *src) {
     memcpy(dst, src, sizeof(struct cpuinfo));
+    return;
 }
 
 /**
@@ -57,6 +58,7 @@ static inline int sysmon_cpu_load(void) {
 }
 static inline void sysmon_cpu_unload(void) {
     cpusinfo_del();
+    return;
 }
 
 #endif
