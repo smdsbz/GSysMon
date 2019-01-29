@@ -18,13 +18,17 @@ static struct key_value *parse_line(const char *in) {
     static char val[1024];
     static struct key_value kv;
     // "%nc" in scanf-family is not null-terminated, thus cleaning is needed!
+    memset(key, 0, 256);
     memset(val, 0, 1024);
-    int match_count = sscanf(in, "%255[^\t] : %1023c", key, val);
-    if (match_count == 0) {
+    int match_count = sscanf(in, "%255[^:]:%1023c", key, val);
+    strip(key);
+    strip(val);
+    /* printf("'%s' = '%s'\n", key, val); */
+    if (match_count == 0 || isempty(key)) {
         return NULL;
     }
     kv.key = key;
-    if (match_count == 1) {
+    if (match_count == 1 || isempty(val)) {
         kv.value = NULL;
     } else {
         kv.value = val;
@@ -32,7 +36,7 @@ static struct key_value *parse_line(const char *in) {
     return &kv;
 }
 
-struct cpuinfo *sysmon_get_cpuinfo(void) {
+struct cpuinfo *sysmon_get_cpuinfo(int processor) {
     static struct cpuinfo cpuinfo;
     FILE *fp;
     char buf[1024];
@@ -44,24 +48,107 @@ struct cpuinfo *sysmon_get_cpuinfo(void) {
         perror("fopen");
         return NULL;
     }
+    int curr_proc = -1;
     while (freadline(fp, buf, 1024) > 0) {
         kv = parse_line(buf);
+        if (strequ(kv->key, "processor")) {
+            if (kv->value != NULL) {
+                sscanf(kv->value, "%d", &curr_proc);
+                if (curr_proc == processor) {
+                    cpuinfo.processor = curr_proc;
+                }
+            }
+            continue;
+        }
+        if (curr_proc < processor) {
+            continue;
+        } else if (curr_proc > processor) {
+            break;
+        }
         if (strequ(kv->key, "model name")) {
             if (kv->value != NULL) {
                 strcpy(cpuinfo.model_name, kv->value);
             } else {
                 cpuinfo.model_name[0] = '\0';
             }
-        } else if (strequ(kv->key, "cpu MHz")) {
+            continue;
+        }
+        if (strequ(kv->key, "cpu MHz")) {
             if (kv->value != NULL) {
                 sscanf(kv->value, "%lf", &cpuinfo.cpu_mhz);
             } else {
                 cpuinfo.cpu_mhz = 0.0;
             }
+            continue;
+        }
+        if (strequ(kv->key, "core id")) {
+            if (kv->value != NULL) {
+                sscanf(kv->value, "%u", &cpuinfo.core_id);
+            } else {
+                cpuinfo.core_id = 0;
+            }
         }
     }
     fclose(fp);
     return &cpuinfo;
+}
+
+static int _get_processor_count(void) {
+    int proc_cnt = 0;
+    FILE *fp;
+    char buf[1024];
+    struct key_value *kv;
+    if ((fp = fopen("/proc/cpuinfo", "r")) == NULL) {
+        perror("fopen");
+        return -1;
+    }
+    while (freadline(fp, buf, 1024) > 0) {
+        kv = parse_line(buf);
+        if (strequ(kv->key, "processor")) {
+            ++proc_cnt;
+        }
+    }
+    fclose(fp);
+    return proc_cnt;
+}
+
+int cpusinfo_init(void) {
+    int retval;
+    memset(&__cpusinfo, 0, sizeof(struct cpusinfo));
+    retval = _get_processor_count();
+    if (retval < 0) {
+        return retval;
+    }
+    __cpusinfo.processor_count = retval;
+    __cpusinfo.cpuinfos = 
+        malloc(__cpusinfo.processor_count * sizeof(struct cpuinfo));
+    if (__cpusinfo.cpuinfos == NULL) {
+        return -1;
+    }
+    memset(__cpusinfo.cpuinfos, 0,
+            __cpusinfo.processor_count * sizeof(struct cpuinfo));
+    return 0;
+}
+
+void cpusinfo_del(void) {
+    if (__cpusinfo.cpuinfos != NULL) {
+        free(__cpusinfo.cpuinfos);
+    }
+    memset(&__cpusinfo, 0, sizeof(struct cpusinfo));
+    return;
+}
+
+struct cpusinfo *sysmon_get_cpusinfo(void) {
+    for (int idx = 0; idx != __cpusinfo.processor_count; ++idx) {
+        struct cpuinfo *cpuinfo = sysmon_get_cpuinfo(idx);
+        if (cpuinfo != NULL) {
+            cpuinfocpy(&__cpusinfo.cpuinfos[idx], cpuinfo);
+        } else {
+            memset(&__cpusinfo.cpuinfos[idx], 0, sizeof(struct cpuinfo));
+            return NULL;
+        }
+    }
+    return &__cpusinfo;
 }
 
 
@@ -70,23 +157,67 @@ struct cpuinfo *sysmon_get_cpuinfo(void) {
 #if SYSMON_CPU_TEST
 int main(const int argc, const char **argv) {
 
-    printf("Testing %s():\n", "sysmon_get_cpuinfo");
-    struct cpuinfo *cpuinfo = sysmon_get_cpuinfo();
-    if (cpuinfo) {
-        if (strlen(cpuinfo->model_name)) {
-            printf(SYSMON_TEST_SUCCESS ": model name: %s\n", cpuinfo->model_name);
-        } else {
-            puts(SYSMON_TEST_FAIL ": model name");
-        }
-        if (cpuinfo->cpu_mhz != 0.0) {
-            printf(SYSMON_TEST_SUCCESS ": cpu MHz: %.2lf\n", cpuinfo->cpu_mhz);
-        } else {
-            puts(SYSMON_TEST_FAIL ": cpu MHz");
+    /* printf("Testing %s():\n", "sysmon_get_cpuinfo"); */
+    /* struct cpuinfo *cpuinfo = sysmon_get_cpuinfo(3); */
+    /* if (cpuinfo) { */
+    /*     printf(SYSMON_TEST_SUCCESS ": processor: %u\n", cpuinfo->processor); */
+    /*     if (strlen(cpuinfo->model_name)) { */
+    /*         printf(SYSMON_TEST_SUCCESS ": model name: %s\n", cpuinfo->model_name); */
+    /*     } else { */
+    /*         puts(SYSMON_TEST_FAIL ": model name"); */
+    /*     } */
+    /*     if (cpuinfo->cpu_mhz != 0.0) { */
+    /*         printf(SYSMON_TEST_SUCCESS ": cpu MHz: %.2lf\n", cpuinfo->cpu_mhz); */
+    /*     } else { */
+    /*         puts(SYSMON_TEST_FAIL ": cpu MHz"); */
+    /*     } */
+    /*     printf(SYSMON_TEST_SUCCESS ": core id: %u\n", cpuinfo->core_id); */
+    /* } else { */
+    /*     printf(SYSMON_TEST_FAIL ": got %p\n", cpuinfo); */
+    /* } */
+
+    /* printf("Testing %s():\n", "_get_processor_count"); */
+    /* int proc_cnt = _get_processor_count(); */
+    /* if (proc_cnt != -1) { */
+    /*     printf(SYSMON_TEST_SUCCESS ": processor count (logical): %d\n", proc_cnt); */
+    /* } else { */
+    /*     printf(SYSMON_TEST_FAIL ": got %d\n", proc_cnt); */
+    /* } */
+
+    printf("Testing the %s module:\n", "cpu");
+    int retinit = sysmon_cpu_load();
+    if (retinit == 0) {
+        printf(SYSMON_TEST_SUCCESS ": %s\n", "initialization");
+    } else {
+        printf(SYSMON_TEST_FAIL ": initialization got %d\n", retinit);
+        return 0;
+    }
+    struct cpusinfo *info = sysmon_get_cpusinfo();
+    if (info != NULL) {
+        for (unsigned idx = 0, range = info->processor_count;
+                idx != range; ++idx) {
+            struct cpuinfo *cpuinfo = &info->cpuinfos[idx];
+            printf(SYSMON_TEST_SUCCESS ": processor: %u\n", cpuinfo->processor);
+            if (strlen(cpuinfo->model_name)) {
+                printf(SYSMON_TEST_ESCAPE "model name: %s\n",
+                        cpuinfo->model_name);
+            } else {
+                puts(SYSMON_TEST_FAIL ": model name");
+            }
+            if (cpuinfo->cpu_mhz != 0.0) {
+                printf(SYSMON_TEST_ESCAPE "cpu MHz: %.2lf\n",
+                        cpuinfo->cpu_mhz);
+            } else {
+                puts(SYSMON_TEST_FAIL ": cpu MHz");
+            }
+            printf(SYSMON_TEST_ESCAPE "core id: %u\n", cpuinfo->core_id);
         }
     } else {
-        printf(SYSMON_TEST_FAIL ": got %p\n", cpuinfo);
+        printf(SYSMON_TEST_FAIL ": %s\n", "sysmon_get_cpusinfo()");
     }
+    sysmon_cpu_unload();
 
+    return 0;
 }
 #endif
 

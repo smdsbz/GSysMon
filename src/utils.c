@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "../include/utils.h"
 
@@ -41,5 +42,26 @@ int freadline(FILE *fp, char *to, size_t bufsiz) {
         return -2;
     }
     return 1;
+}
+
+void lstrip(char *s) {
+    // find first non-space character
+    size_t nospace = 0;
+    for (; s[nospace] != '\0' && isspace(s[nospace]); ++nospace) ;
+    // now s[nospace] is either '\0' or the first non-space char
+    // move forward
+    size_t idx = nospace;
+    for (; s[idx] != '\0'; ++idx) {
+        s[idx - nospace] = s[idx];
+    }
+    s[idx - nospace] = '\0';
+    return;
+}
+
+void rstrip(char *s) {
+    ssize_t nospace = strlen(s) - 1;
+    for (; nospace >= 0 && isspace(s[nospace]); --nospace) ;
+    s[nospace + 1] = '\0';
+    return;
 }
 

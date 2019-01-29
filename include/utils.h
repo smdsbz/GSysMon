@@ -68,4 +68,25 @@ static inline int strequ(const char *s1, const char *s2) {
     return !(strcmp(s1, s2));
 }
 
+/**
+ * *strip() - strips spaces at left, right or both edges of a string
+ * @s: the string
+ */
+void lstrip(char *s);
+void rstrip(char *s);
+static inline void strip(char *s) {
+    lstrip(s);
+    rstrip(s);
+}
+
+/**
+ * isempty() - judges whether a string is empty
+ * @s: the sting
+ *
+ * Note that empty characters are counted as well.
+ */
+static inline int isempty(char *s) {
+    return s[0] == '\0';
+}
+
 #endif
