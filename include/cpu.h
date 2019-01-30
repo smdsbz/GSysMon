@@ -51,7 +51,7 @@ struct cpusinfo *sysmon_get_cpusinfo(void);
 /**
  * sysmon_cpu_load/unload() - module initalize and cleanup
  *
- * You MUST call this two functions if you are using this module.
+ * You MUST call this pair of functions on entering and leaving this module.
  */
 static inline int sysmon_cpu_load(void) {
     return cpusinfo_init();

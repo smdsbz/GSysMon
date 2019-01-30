@@ -20,7 +20,6 @@ static struct key_value *parse_line(const char *in) {
     static char val[1024];
     static struct key_value kv;
     // "%nc" in scanf-family is not null-terminated, thus cleaning is needed!
-    memset(key, 0, 256);
     memset(val, 0, 1024);
     int match_count = sscanf(in, "%255[^:]:%1023c", key, val);
     strip(key);
@@ -40,7 +39,7 @@ static struct key_value *parse_line(const char *in) {
 
 /******* Single Processor *******/
 
-struct cpuinfo *sysmon_get_cpuinfo(int processor) {
+struct cpuinfo *sysmon_get_cpuinfo(int processor) {     // {{{
     static struct cpuinfo cpuinfo;
     FILE *fp;
     char buf[1024];
@@ -95,7 +94,7 @@ struct cpuinfo *sysmon_get_cpuinfo(int processor) {
     }
     fclose(fp);
     return &cpuinfo;
-}
+}   // }}}
 
 /******* Multiple Processors *******/
 

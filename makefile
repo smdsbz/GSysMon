@@ -2,6 +2,17 @@ GREEN		= \033[0;32m
 NC		= \033[0m
 PREFINFO	= $(GREEN)💬$(NC)
 
+test_process: build/obj/utils.o src/process.c
+	@echo "$(PREFINFO) Building test for src/process.c ..."
+	@gcc -o build/test/test_process.out -DSYSMON_PROCESS_TEST \
+	    build/obj/utils.o src/process.c
+	@echo "$(PREFINFO) Running test_process ..."
+	@build/test/test_process.out
+
+build/obj/process.o: build/obj/utils.o src/process.c
+	@echo "$(PREFINFO) Building process.o ..."
+	@gcc -c -o build/obj/process.o build/obj/utils.o src/process.c
+
 test_cpu: build/obj/utils.o src/cpu.c
 	@echo "$(PREFINFO) Building test for src/cpu.c ..."
 	@gcc -o build/test/test_cpu.out -DSYSMON_CPU_TEST \

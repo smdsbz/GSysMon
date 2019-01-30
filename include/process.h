@@ -20,23 +20,44 @@ static inline void procstatcpy(struct procstat *dst,
     return;
 }
 
+/**
+ * sysmon_get_procstat() - gets the status of a process by reading its
+ *                         ``/proc/[pid]/stat``
+ * @pid: the PID of the process
+ * 
+ * sysmon_get_procstat() returns a statically allocated procstat struct, or NULL
+ * if operation failed.
+ */
 struct procstat *sysmon_get_procstat(int pid);
 
 struct procnode {
-    struct procstat    *procstat;
+    struct procstat     procstat;
     struct procnode    *prev;
     struct procnode    *next;
 };
 struct proclist {
-    size_t              count;
     struct procnode    *head;
     struct procnode    *tail;
 } __proclist;
 int proclist_init(void);
 void proclist_cleanup(void);
 
-struct proclist *sysmon_process_refresh(void);
+// TODO: proclist iterater family
 
+/**
+ * sysmon_process_refresh() - refreshed and maintain the proclist
+ * @cb: a callback interface, for future use
+ *
+ * sysmon_process_refresh() returns pointer to the modules proclist struct on
+ * success and NULL on failure.
+ */
+struct proclist *sysmon_process_refresh(void (*cb)(void));
+
+/**
+ * sysmon_process_load/unload() - module initialize and cleanup
+ *
+ * You MUST call this pair of functions on entering and leaving this module.
+ */
 static inline int sysmon_process_load(void) {
     return proclist_init();
 }
@@ -44,7 +65,6 @@ static inline void sysmon_process_unload(void) {
     proclist_cleanup();
     return;
 }
-
 
 #endif
 
