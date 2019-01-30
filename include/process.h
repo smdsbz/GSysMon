@@ -68,6 +68,7 @@ struct procstat *proclist_find_by_pid(int pid);
 // TODO: Find a process by name.
 //       Would it require an extra proclist maintained?
 //       Does the search result have to be kept up-to-date?
+// ANSWER: DON'T! USE THE CALLBACK OF refresh()!!!
 /* struct procstat *proclist_find_by_name(const char *name); */
 
 /**
