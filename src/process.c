@@ -33,7 +33,7 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
         /* // NOTE: the comm field may itself contain parenthesis!!! */
         /* "(%255[^)]) "   //  2. comm */
         " "             //     trailing space after the comm field
-        "%*c "          //  3. state
+        "%c "           //  3. state
         "%d "           //  4. ppid
         "%*d "          //  5. pgrp
         "%*d "          //  6. session
@@ -79,10 +79,10 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
     }
     *(--dstp) = '\0';
     // extract other fields
-    retval = fscanf(fp, statfmt, &procstat->ppid, &procstat->priority,
-                    &procstat->nice, &procstat->num_threads, &procstat->vsize,
-                    &procstat->rss);
-    if (retval != 6) {
+    retval = fscanf(fp, statfmt, &procstat->state,
+                    &procstat->ppid, &procstat->priority, &procstat->nice,
+                    &procstat->num_threads, &procstat->vsize, &procstat->rss);
+    if (retval != 7) {
         fclose(fp);
         return -1;
     }
@@ -341,6 +341,7 @@ int main(const int argc, const char **argv) {
                 procstat = proclist_iter_next()) {
             printf(SYSMON_TEST_SUCCESS ": pid: %d\n", procstat->pid);
             printf(SYSMON_TEST_ESCAPE "comm: %s\n", procstat->comm);
+            printf(SYSMON_TEST_ESCAPE "state: %c\n", procstat->state);
             printf(SYSMON_TEST_ESCAPE "ppid: %d\n", procstat->ppid);
             printf(SYSMON_TEST_ESCAPE "priority: %ld\n", procstat->priority);
             printf(SYSMON_TEST_ESCAPE "nice: %ld\n", procstat->nice);

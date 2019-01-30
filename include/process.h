@@ -6,6 +6,7 @@
 struct procstat {
     int             pid;
     char            comm[256];      // filename of the executable
+    char            state;          // process state
     int             ppid;           // parent PID
     long            priority;       // negated, minus one
     long            nice;           // higher nice means lower priority
