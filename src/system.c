@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#if SYSMON_SYSTEM_TEST
-#include <stdlib.h>
-#endif
 
 #include "../include/utils.h"
 #include "../include/system.h"
@@ -100,7 +97,7 @@ int main(const int argc, const char **argv) {
         printf(SYSMON_TEST_FAIL ": got %p\n", sysver);
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 #endif
 

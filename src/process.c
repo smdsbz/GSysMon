@@ -5,9 +5,6 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <dirent.h>
-#if SYSMON_PROCESS_TEST
-#include <stdlib.h>
-#endif
 
 #include "../include/utils.h"
 #include "../include/process.h"

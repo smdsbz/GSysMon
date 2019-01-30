@@ -1,8 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#if SYSMON_SYSTEM_TEST
-#include <stdlib.h>
-#endif
 
 #include "../include/utils.h"
 #include "../include/cpu.h"
