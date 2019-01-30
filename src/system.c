@@ -32,7 +32,7 @@ struct uptime *sysmon_get_uptime(void) {
     return &uptime;
 }
 
-char *sysmon_convert_uptime_to_str(double uptime) {
+char *sysmon_convert_uptime_to_boottime(double uptime) {
     time_t boottime = time(NULL) - (ssize_t)uptime;
     char *timestr = ctime(&boottime);
     if (timestr == NULL) {
@@ -81,8 +81,8 @@ int main(const int argc, const char **argv) {
         printf(SYSMON_TEST_FAIL ": got %p\n", uptime);
     }
 
-    printf("Testing %s():\n", "sysmon_convert_uptime_to_str");
-    char *boottime = sysmon_convert_uptime_to_str(uptime->uptime);
+    printf("Testing %s():\n", "sysmon_convert_uptime_to_boottime");
+    char *boottime = sysmon_convert_uptime_to_boottime(uptime->uptime);
     if (boottime) {
         printf(SYSMON_TEST_SUCCESS ": %s\n", boottime);
     } else {

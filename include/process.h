@@ -47,12 +47,28 @@ void proclist_cleanup(void);
  * proclist_begin/next/end() - proclist iterator family
  *
  * Call proclist iterator family to get a pointer to procstat struct.
+ *
+ * The pointer returned CANNOT be free()-d.
  */
 struct procstat *proclist_iter_begin(void);
 struct procstat *proclist_iter_next(void);
 static inline struct procstat *proclist_iter_end(void) {
     return NULL;
 }
+
+/**
+ * proclist_find_by_pid/name() - proclist search family
+ *
+ * proclist_find_by_pid/name() returns pointer to procstat struct if exists,
+ * otherwise returns NULL.
+ *
+ * The pointer returned CANNOT be free()-d.
+ */
+struct procstat *proclist_find_by_pid(int pid);
+// TODO: Find a process by name.
+//       Would it require an extra proclist maintained?
+//       Does the search result have to be kept up-to-date?
+/* struct procstat *proclist_find_by_name(const char *name); */
 
 /**
  * sysmon_process_refresh() - refreshed and maintain the proclist

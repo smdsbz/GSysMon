@@ -27,7 +27,7 @@ struct uptime *sysmon_get_uptime(void);
  *
  * Returns a statically allocated string on success, else returns NULL.
  */
-char *sysmon_convert_uptime_to_str(double uptime);
+char *sysmon_convert_uptime_to_boottime(double uptime);
 
 /**
  * sysmon_get_system_version() - get system version info from

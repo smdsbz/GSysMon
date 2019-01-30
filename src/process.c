@@ -79,9 +79,9 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
     }
     *(--dstp) = '\0';
     // extract other fields
-    retval = fscanf(fp, statfmt, &procstat->state,
-                    &procstat->ppid, &procstat->priority, &procstat->nice,
-                    &procstat->num_threads, &procstat->vsize, &procstat->rss);
+    retval = fscanf(fp, statfmt, &procstat->state, &procstat->ppid,
+                    &procstat->priority, &procstat->nice, &procstat->num_threads,
+                    &procstat->vsize, &procstat->rss);
     if (retval != 7) {
         fclose(fp);
         return -1;
@@ -187,16 +187,6 @@ struct proclist *sysmon_process_hard_refresh(void) {    // {{{
     return &__proclist;
 }   // }}}
 
-static struct procstat *proclist_find_pid(int pid) {    // {{{
-    struct procstat *procstat = proclist_iter_begin();
-    for (; procstat != proclist_iter_end(); procstat = proclist_iter_next()) {
-        if (procstat->pid == pid) {
-            return procstat;
-        }
-    }
-    return NULL;
-}   // }}}
-
 /**
  * sysmon_process_refresh_inc() - incremental refresh
  *
@@ -218,7 +208,7 @@ static struct proclist *sysmon_process_refresh_inc(void) {      // {{{
             continue;
         }
         int pid = strtod(entry->d_name, NULL);
-        if (proclist_find_pid(pid) == NULL) {
+        if (proclist_find_by_pid(pid) == NULL) {
             if (proclist_append(pid) == NULL) {
                 return NULL;
             }
@@ -294,6 +284,26 @@ struct procstat *proclist_iter_next(void) {      // {{{
         return NULL;
     }
     return &__proclist_iter_ptr->procstat;
+}   // }}}
+
+struct procstat *proclist_find_by_pid(int pid) {    // {{{
+    struct procstat *procstat = proclist_iter_begin();
+    for (; procstat != proclist_iter_end(); procstat = proclist_iter_next()) {
+        if (procstat->pid == pid) {
+            return procstat;
+        }
+    }
+    return NULL;
+}   // }}}
+
+struct procstat *proclist_find_by_name(const char *name) {      // {{{
+    struct procstat *procstat = proclist_iter_begin();
+    for (; procstat != proclist_iter_end(); procstat = proclist_iter_next()) {
+        if (strequ(procstat->comm, name)) {
+            return procstat;
+        }
+    }
+    return NULL;
 }   // }}}
 
 struct proclist *sysmon_process_refresh(void (*cb)(void)) {     // {{{
