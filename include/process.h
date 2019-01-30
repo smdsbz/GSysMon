@@ -42,7 +42,16 @@ struct proclist {
 int proclist_init(void);
 void proclist_cleanup(void);
 
-// TODO: proclist iterater family
+/**
+ * proclist_begin/next/end() - proclist iterator family
+ *
+ * Call proclist iterator family to get a pointer to procstat struct.
+ */
+struct procstat *proclist_iter_begin(void);
+struct procstat *proclist_iter_next(void);
+static inline struct procstat *proclist_iter_end(void) {
+    return NULL;
+}
 
 /**
  * sysmon_process_refresh() - refreshed and maintain the proclist

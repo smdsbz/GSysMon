@@ -29,8 +29,9 @@ const static size_t B_PER_GB = 1024 * 1024 * 1024;
  */
 static int procstat_fill(struct procstat *procstat) {   // {{{
     const static char statfmt[] = (
-        "%*d "          //  1. pid
-        "(%255[^)]) "   //  2. comm
+        /* "%*d "          //  1. pid */
+        /* // NOTE: the comm field may itself contain parenthesis!!! */
+        /* "(%255[^)] "    //  2. comm */
         "%*c "          //  3. state
         "%d "           //  4. ppid
         "%*d "          //  5. pgrp
@@ -63,10 +64,25 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
         perror("fopen");
         return -1;
     }
-    retval = fscanf(fp, statfmt, procstat->comm, &procstat->ppid,
-                    &procstat->priority, &procstat->nice, &procstat->num_threads,
-                    &procstat->vsize, &procstat->rss);
-    if (retval != 7) {
+    // extract comm field
+    fscanf(fp, "%*d (");
+    int paren_level = 1;
+    char *dstp = procstat->comm;
+    for (; paren_level != 0; ++dstp) {
+        *dstp = fgetc(fp);
+        if (*dstp == '(') {
+            ++paren_level;
+        } else if (*dstp == ')') {
+            --paren_level;
+        }
+    }
+    *(--dstp) = '\0';
+    fgetc(fp);      // consumes a space
+    // extract other fields
+    retval = fscanf(fp, statfmt, &procstat->ppid, &procstat->priority,
+                    &procstat->nice, &procstat->num_threads, &procstat->vsize,
+                    &procstat->rss);
+    if (retval != 6) {
         fclose(fp);
         return -1;
     }
@@ -81,16 +97,16 @@ static inline int procnode_fill(struct procnode *proc) {
 }
 
 /**
- * proclist_add() - adds a record to proclist
+ * proclist_append() - adds a record to proclist
  * @pid: the pid of the process to be added
  *
- * proclist_add() returns a pointer to the newly added procnode on success,
+ * proclist_append() returns a pointer to the newly added procnode on success,
  * returns NULL on failure, e.g. no process identified by @pid, and no procnode
  * will be added.
  *
  * Fields of proclist is maintained by this function.
  */
-static struct procnode *proclist_add(int pid) {     // {{{
+static struct procnode *proclist_append(int pid) {      // {{{
     struct procnode *procnode = malloc(sizeof(struct procnode));
     if (procnode == NULL) {
         perror("malloc");
@@ -100,6 +116,7 @@ static struct procnode *proclist_add(int pid) {     // {{{
     // get stat
     procnode->procstat.pid = pid;
     if (procnode_fill(procnode) != 0) {
+        printf("procnode_fill() with pid = %d failed\n", procnode->procstat.pid);
         free(procnode);
         return NULL;
     }
@@ -141,7 +158,7 @@ static void proclist_del(struct procnode *proc) {   // {{{
 
 /******* sysmon_process_refresh() Helpers *******/
 
-static inline int isprocdir(struct dirent *entry) {     // {{{
+static int isprocdir(struct dirent *entry) {     // {{{
     if (entry->d_type != DT_DIR) {
         return 0;
     }
@@ -162,9 +179,76 @@ struct proclist *sysmon_process_hard_refresh(void) {    // {{{
         if (!isprocdir(entry)) {
             continue;
         }
-        proclist_add(strtod(entry->d_name, NULL));
+        if (proclist_append(strtod(entry->d_name, NULL)) == NULL) {
+            return NULL;
+        }
     }
     closedir(procdp);
+    return &__proclist;
+}   // }}}
+
+static struct procstat *proclist_find_pid(int pid) {    // {{{
+    struct procstat *procstat = proclist_iter_begin();
+    for (; procstat != proclist_iter_end(); procstat = proclist_iter_next()) {
+        if (procstat->pid == pid) {
+            return procstat;
+        }
+    }
+    return NULL;
+}   // }}}
+
+/**
+ * sysmon_process_refresh_inc() - incremental refresh
+ *
+ * sysmon_process_refresh_inc() returns NULL on interal call failure.
+ *
+ * sysmon_process_refresh_inc() traverses the ``/proc`` directory, adds a node
+ * into proclist if not present. Note this function does NOT refresh existing
+ * nodes.
+ */
+static struct proclist *sysmon_process_refresh_inc(void) {      // {{{
+    DIR *procdp;
+    struct dirent *entry;
+    if ((procdp = opendir("/proc")) == NULL) {
+        perror("opendir");
+        return NULL;
+    }
+    while ((entry = readdir(procdp)) != NULL) {
+        if (!isprocdir(entry)) {
+            continue;
+        }
+        int pid = strtod(entry->d_name, NULL);
+        if (proclist_find_pid(pid) == NULL) {
+            if (proclist_append(pid) == NULL) {
+                return NULL;
+            }
+        }
+    }
+    closedir(procdp);
+    return  &__proclist;
+}   // }}}
+
+/**
+ * sysmon_process_refresh_dec() - decremental refresh
+ *
+ * sysmon_process_refresh_dec() returns NULL on interal call failure.
+ *
+ * sysmon_process_refresh_dec() traverses the existing proclist, updates fields
+ * and delete procnodes no longer found in ``/proc``.
+ */
+static struct proclist *sysmon_process_refresh_dec(void) {      // {{{
+    struct procnode *procnode = __proclist.head;
+    struct procnode *delnode = NULL;
+    while (procnode != NULL) {
+        if (procstat_fill(&procnode->procstat) != 0) {
+            delnode = procnode;
+        }
+        procnode = procnode->next;
+        if (delnode != NULL) {
+            proclist_del(delnode);
+            delnode = NULL;
+        }
+    }
     return &__proclist;
 }   // }}}
 
@@ -194,6 +278,37 @@ void proclist_cleanup(void) {   // {{{
     return;
 }   // }}}
 
+static struct procnode *__proclist_iter_ptr;    // iter pointer as private member
+
+struct procstat *proclist_iter_begin(void) {     // {{{
+    __proclist_iter_ptr = __proclist.head;
+    if (__proclist_iter_ptr == NULL) {
+        return NULL;
+    }
+    return &__proclist_iter_ptr->procstat;
+}   // }}}
+
+struct procstat *proclist_iter_next(void) {      // {{{
+    __proclist_iter_ptr = __proclist_iter_ptr->next;
+    if (__proclist_iter_ptr == NULL) {
+        return NULL;
+    }
+    return &__proclist_iter_ptr->procstat;
+}   // }}}
+
+struct proclist *sysmon_process_refresh(void (*cb)(void)) {     // {{{
+    if (sysmon_process_refresh_dec() == NULL) {
+        return NULL;
+    }
+    if (sysmon_process_refresh_inc() == NULL) {
+        return NULL;
+    }
+    if (cb != NULL) {
+        cb();
+    }
+    return &__proclist;
+}   // }}}
+
 /******* Test *******/
 
 #if SYSMON_PROCESS_TEST
@@ -216,13 +331,14 @@ int main(const int argc, const char **argv) {
     /*     printf(SYSMON_TEST_FAIL ": %s\n", "sysmon_get_procstat()"); */
     /* } */
 
-    printf("Testing %s():\n", "sysmon_process_hard_refresh");
+    printf("Testing %s():\n", "sysmon_process_refresh");
     sysmon_process_load();
     struct proclist *proclist = sysmon_process_hard_refresh();
+    proclist = sysmon_process_refresh(NULL);
     if (proclist != NULL) {
-        struct procnode *procnode = proclist->head;
-        for (; procnode != NULL; procnode = procnode->next) {
-            struct procstat *procstat = &procnode->procstat;
+        for (struct procstat *procstat = proclist_iter_begin();
+                procstat != proclist_iter_end();
+                procstat = proclist_iter_next()) {
             printf(SYSMON_TEST_SUCCESS ": pid: %d\n", procstat->pid);
             printf(SYSMON_TEST_ESCAPE "comm: %s\n", procstat->comm);
             printf(SYSMON_TEST_ESCAPE "ppid: %d\n", procstat->ppid);
@@ -234,6 +350,8 @@ int main(const int argc, const char **argv) {
             printf(SYSMON_TEST_ESCAPE "rss: %ldB (%.2lfMB)\n", procstat->rss,
                     (double)procstat->rss * getpagesize() / (double)B_PER_MB);
         }
+    } else {
+        printf(SYSMON_TEST_FAIL ": got %p\n", proclist);
     }
     sysmon_process_unload();
 

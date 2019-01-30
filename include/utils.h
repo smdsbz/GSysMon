@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <string.h>
+#include <dirent.h>
 
 /**
  * some printf-able colors for prettier debugging
@@ -46,6 +47,20 @@ ssize_t open_and_read(const char *from, char *to, size_t bufsiz);
  *      -2  on buffer too small, but a truncated version will be saved in @to
  */
 int freadline(FILE *fp, char *to, size_t bufsiz);
+
+/**
+ * dir_exists() - finds out whether a directory exists
+ * @path
+ *
+ * dir_exists() returns non-zero if @path exists, else returns 0.
+ */
+static inline int dir_exists(const char *path) {
+    DIR *dp = opendir(path);
+    if (dp != NULL) {
+        closedir(dp);
+    }
+    return (dp != NULL);
+}
 
 /**
  * remove_trailing_newline() - removes trailing newline of a '\n\0' terminated
