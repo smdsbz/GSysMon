@@ -31,7 +31,8 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
     const static char statfmt[] = (
         /* "%*d "          //  1. pid */
         /* // NOTE: the comm field may itself contain parenthesis!!! */
-        /* "(%255[^)] "    //  2. comm */
+        /* "(%255[^)]) "   //  2. comm */
+        " "             //     trailing space after the comm field
         "%*c "          //  3. state
         "%d "           //  4. ppid
         "%*d "          //  5. pgrp
@@ -77,7 +78,6 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
         }
     }
     *(--dstp) = '\0';
-    fgetc(fp);      // consumes a space
     // extract other fields
     retval = fscanf(fp, statfmt, &procstat->ppid, &procstat->priority,
                     &procstat->nice, &procstat->num_threads, &procstat->vsize,
@@ -347,7 +347,8 @@ int main(const int argc, const char **argv) {
             printf(SYSMON_TEST_ESCAPE "num_threads: %ld\n", procstat->num_threads);
             printf(SYSMON_TEST_ESCAPE "vsize: %luB (%.2lfMB)\n", procstat->vsize,
                     (double)procstat->vsize / (double)B_PER_MB);
-            printf(SYSMON_TEST_ESCAPE "rss: %ldB (%.2lfMB)\n", procstat->rss,
+            printf(SYSMON_TEST_ESCAPE "rss: %ldB (%.2lfMB)\n",
+                    procstat->rss * getpagesize(),
                     (double)procstat->rss * getpagesize() / (double)B_PER_MB);
         }
     } else {
