@@ -21,7 +21,7 @@ char *sysmon_get_hostname(void) {
 
 struct uptime *sysmon_get_uptime(void) {
     static struct uptime uptime;
-    static char buf[64];
+    char buf[64];
     int retval;
     if ((retval = open_and_read("/proc/uptime", buf, 64)) == -1) {
         return NULL;
@@ -41,6 +41,23 @@ char *sysmon_convert_uptime_to_boottime(double uptime) {
     }
     remove_trailing_newline(timestr);
     return timestr;
+}
+
+size_t sysmon_get_boottime(void) {
+    size_t boottime;
+    char line[1024];
+    FILE *fp;
+    if ((fp = fopen("/proc/stat", "r")) == NULL) {
+        perror("fopen");
+        return 0;
+    }
+    while (freadline(fp, line, 1024) != -1) {
+        if (sscanf(line, "btime %lu", &boottime) == 1) {
+            break;
+        }
+    }
+    fclose(fp);
+    return boottime;
 }
 
 char *sysmon_get_system_version(void) {
@@ -81,12 +98,22 @@ int main(const int argc, const char **argv) {
         printf(SYSMON_TEST_FAIL ": got %p\n", uptime);
     }
 
-    printf("Testing %s():\n", "sysmon_convert_uptime_to_boottime");
-    char *boottime = sysmon_convert_uptime_to_boottime(uptime->uptime);
-    if (boottime) {
-        printf(SYSMON_TEST_SUCCESS ": %s\n", boottime);
+    /* printf("Testing %s():\n", "sysmon_convert_uptime_to_boottime"); */
+    /* char *strboottime = sysmon_convert_uptime_to_boottime(uptime->uptime); */
+    /* if (strboottime) { */
+    /*     printf(SYSMON_TEST_SUCCESS ": %s\n", strboottime); */
+    /* } else { */
+    /*     printf(SYSMON_TEST_FAIL ": got %p\n", strboottime); */
+    /* } */
+
+    printf("Testing %s():\n", "sysmon_get_boottime");
+    size_t btime = sysmon_get_boottime();
+    if (btime) {
+        char *boottime = ctime(&btime);
+        remove_trailing_newline(boottime);
+        printf(SYSMON_TEST_SUCCESS ": %lu (%s)\n", btime, boottime);
     } else {
-        printf(SYSMON_TEST_FAIL ": got %p\n", boottime);
+        printf(SYSMON_TEST_FAIL ": got %lu\n", btime);
     }
 
     printf("Testing %s():\n", "sysmon_get_system_version");
