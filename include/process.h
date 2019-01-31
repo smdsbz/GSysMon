@@ -53,8 +53,8 @@ void proclist_cleanup(void);
  *
  * This interface is opened for later filter callback functions' development.
  * You may first call sysmon_process_refresh() to get a full list of running
- * processes, and then traverse the list and call this function to filter out
- * the unwanted ones.
+ * processes, and in its callback, if given, traverse the list and call this
+ * function to filter out the unwanted ones.
  */
 void proclist_del(struct procnode *procnode);
 
@@ -76,7 +76,7 @@ void proclist_del(struct procnode *procnode);
  */
 struct procstat *proclist_iter_begin(void);
 struct procstat *proclist_iter_next(void);
-static inline const struct procstat *proclist_iter_end(void) {
+static inline struct procstat *const proclist_iter_end(void) {
     return NULL;
 }
 
@@ -92,8 +92,8 @@ struct procstat *proclist_find_by_pid(int pid);
 
 /**
  * sysmon_process_refresh() - refreshed and maintain the proclist
- * @cb: a callback interface, for future use
- * @cb_data: data to be passed to @cb
+ * @cb: a callback interface, for future use, ignored if NULL
+ * @cb_data: data to be passed to @cb, ignored if @cb is NULL
  *
  * sysmon_process_refresh() returns pointer to the modules proclist struct on
  * success and NULL on failure.
