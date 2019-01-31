@@ -5,6 +5,18 @@ DIR_GUARD	= @mkdir -vp build/obj build/test
 
 .PHONY: clean
 
+test_cpustat: src/cpustat.c build/obj/utils.o
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building test for $< ..."
+	@gcc -o build/test/$@.out -DSYSMON_CPUSTAT_TEST $^
+	@echo "$(PREFINFO) Running $@ ..."
+	@build/test/$@.out
+
+build/obj/cpustat.o: src/cpustat.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building $@ ..."
+	@gcc -c -o $@ $^
+
 test_process_callbacks: src/process_callbacks.c build/obj/utils.o		\
 		build/obj/process.o
 	$(DIR_GUARD)

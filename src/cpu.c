@@ -49,6 +49,8 @@ struct cpuinfo *sysmon_get_cpuinfo(int processor) {     // {{{
         return NULL;
     }
     int curr_proc = -1;
+    unsigned found = 0;     // indicates whether corresponding field has been
+                            // filled: { proc, model, mhz, physid }
     while (freadline(fp, buf, 1024) > 0) {
         kv = parse_line(buf);
         if (strequ(kv->key, "processor")) {
@@ -65,9 +67,11 @@ struct cpuinfo *sysmon_get_cpuinfo(int processor) {     // {{{
         } else if (curr_proc > processor) {
             break;
         }
+        found |= 8;
         if (strequ(kv->key, "model name")) {
             if (kv->value != NULL) {
                 strcpy(cpuinfo.model_name, kv->value);
+                found |= 4;
             } else {
                 cpuinfo.model_name[0] = '\0';
             }
@@ -76,6 +80,7 @@ struct cpuinfo *sysmon_get_cpuinfo(int processor) {     // {{{
         if (strequ(kv->key, "cpu MHz")) {
             if (kv->value != NULL) {
                 sscanf(kv->value, "%lf", &cpuinfo.cpu_mhz);
+                found |= 2;
             } else {
                 cpuinfo.cpu_mhz = 0.0;
             }
@@ -84,12 +89,17 @@ struct cpuinfo *sysmon_get_cpuinfo(int processor) {     // {{{
         if (strequ(kv->key, "core id")) {
             if (kv->value != NULL) {
                 sscanf(kv->value, "%u", &cpuinfo.core_id);
+                found |= 1;
             } else {
                 cpuinfo.core_id = 0;
             }
         }
     }
     fclose(fp);
+    // checks if every field has been filled
+    if (found != 15) {
+        return NULL;
+    }
     return &cpuinfo;
 }   // }}}
 
@@ -126,7 +136,7 @@ int cpusinfo_init(void) {
         return retval;
     }
     __cpusinfo.processor_count = retval;
-    __cpusinfo.cpuinfos = 
+    __cpusinfo.cpuinfos =
         malloc(__cpusinfo.processor_count * sizeof(struct cpuinfo));
     if (__cpusinfo.cpuinfos == NULL) {
         return -1;
