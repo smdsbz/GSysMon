@@ -63,18 +63,27 @@ void proclist_del(struct procnode *procnode);
  *
  * Call proclist iterator family to get a pointer to procstat struct.
  *
+ * Typical usecase - traversing the list
+ *
+ *      for (struct procstat *stat = proclist_iter_begin();
+ *              stat != proclist_iter_end();
+ *              stat = proclist_iter_next()) {
+ *          // use stat
+ *          // modifications to stat is allowed but discouraged
+ *      }
+ *
  * The pointer returned CANNOT be free()-d.
  */
 struct procstat *proclist_iter_begin(void);
 struct procstat *proclist_iter_next(void);
-static inline struct procstat *proclist_iter_end(void) {
+static inline const struct procstat *proclist_iter_end(void) {
     return NULL;
 }
 
 /**
- * proclist_find_by_pid/name() - proclist search family
+ * proclist_find_by_pid() - finds the procstat struct whose PID is @pid
  *
- * proclist_find_by_pid/name() returns pointer to procstat struct if exists,
+ * proclist_find_by_pid() returns pointer to procstat struct if exists,
  * otherwise returns NULL.
  *
  * The pointer returned CANNOT be free()-d.
