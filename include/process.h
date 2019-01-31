@@ -23,7 +23,7 @@ static inline void procstatcpy(struct procstat *dst,
 
 /**
  * sysmon_get_procstat() - gets the status of a process by reading its
- *                         ``/proc/[pid]/stat``
+ * ``/proc/[pid]/stat``
  * @pid: the PID of the process
  * 
  * sysmon_get_procstat() returns a statically allocated procstat struct, or NULL
@@ -39,9 +39,24 @@ struct procnode {
 struct proclist {
     struct procnode    *head;
     struct procnode    *tail;
-} __proclist;
+};
 int proclist_init(void);
 void proclist_cleanup(void);
+
+/**
+ * proclist_del() - deletes a procnode struct from proclist
+ * @proc: the procnode to be removed
+ *
+ * After calling proclist_del(), @proc will be free()-d thus no longer valid.
+ *
+ * Fields of proclist is maintained by this function.
+ *
+ * This interface is opened for later filter callback functions' development.
+ * You may first call sysmon_process_refresh() to get a full list of running
+ * processes, and then traverse the list and call this function to filter out
+ * the unwanted ones.
+ */
+void proclist_del(struct procnode *procnode);
 
 /**
  * proclist_begin/next/end() - proclist iterator family
@@ -65,23 +80,22 @@ static inline struct procstat *proclist_iter_end(void) {
  * The pointer returned CANNOT be free()-d.
  */
 struct procstat *proclist_find_by_pid(int pid);
-// TODO: Find a process by name.
-//       Would it require an extra proclist maintained?
-//       Does the search result have to be kept up-to-date?
-// ANSWER: DON'T! USE THE CALLBACK OF refresh()!!!
-/* struct procstat *proclist_find_by_name(const char *name); */
 
 /**
  * sysmon_process_refresh() - refreshed and maintain the proclist
  * @cb: a callback interface, for future use
+ * @cb_data: data to be passed to @cb
  *
  * sysmon_process_refresh() returns pointer to the modules proclist struct on
  * success and NULL on failure.
  */
-struct proclist *sysmon_process_refresh(void (*cb)(void));
+struct proclist *sysmon_process_refresh(void (*cb)(struct proclist *, void *),
+                                        void *cb_data);
 
 /**
  * sysmon_process_load/unload() - module initialize and cleanup
+ *
+ * sysmon_process_load() returns 0 on success.
  *
  * You MUST call this pair of functions on entering and leaving this module.
  */

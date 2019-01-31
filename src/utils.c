@@ -44,6 +44,16 @@ int freadline(FILE *fp, char *to, size_t bufsiz) {
     return 1;
 }
 
+int strstr_fuzzy(const char *s1, const char *s2) {
+    const char *ps1 = s1, *ps2 = s2;
+    for (; *ps1 != '\0' && *ps2 != '\0'; ++ps1) {
+        if (*ps1 == *ps2) {
+            ++ps2;
+        }
+    }
+    return (*ps2 == '\0');
+}
+
 void lstrip(char *s) {
     // find first non-space character
     size_t nospace = 0;

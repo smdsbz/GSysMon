@@ -1,40 +1,69 @@
 GREEN		= \033[0;32m
 NC		= \033[0m
 PREFINFO	= $(GREEN)💬$(NC)
+DIR_GUARD	= @mkdir -vp build/obj build/test
 
-test_process: build/obj/utils.o src/process.c
-	@echo "$(PREFINFO) Building test for src/process.c ..."
-	@gcc -o build/test/test_process.out -DSYSMON_PROCESS_TEST \
-	    build/obj/utils.o src/process.c
-	@echo "$(PREFINFO) Running test_process ..."
-	@build/test/test_process.out
+.PHONY: clean
 
-build/obj/process.o: build/obj/utils.o src/process.c
-	@echo "$(PREFINFO) Building process.o ..."
-	@gcc -c -o build/obj/process.o build/obj/utils.o src/process.c
+test_process_callbacks: src/process_callbacks.c build/obj/utils.o		\
+		build/obj/process.o
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building test for $< ..."
+	@gcc -o build/test/$@.out -DSYSMON_PROCESS_CALLBACKS_TEST $^
+	@echo "$(PREFINFO) Running $@ ..."
+	@build/test/$@.out
 
-test_cpu: build/obj/utils.o src/cpu.c
-	@echo "$(PREFINFO) Building test for src/cpu.c ..."
-	@gcc -o build/test/test_cpu.out -DSYSMON_CPU_TEST \
-	    build/obj/utils.o src/cpu.c
-	@echo "$(PREFINFO) Running test_cpu ..."
-	@build/test/test_cpu.out
+build/obj/process_callbacks.o: src/process_callbacks.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building $@ ..."
+	@gcc -c -o $@ $^
 
-build/obj/cpu.o: build/obj/utils.o src/cpu.c
-	@echo "$(PREFINFO) Building cpu.o ..."
-	@gcc -c -o build/obj/cpu.o build/obj/utils.o src/cpu.o
+test_process: src/process.c build/obj/utils.o
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building test for $< ..."
+	@gcc -o build/test/$@.out -DSYSMON_PROCESS_TEST $^
+	@echo "$(PREFINFO) Running $@ ..."
+	@build/test/$@.out
 
-test_system: build/obj/utils.o src/system.c
-	@echo "$(PREFINFO) Building test for src/system.c ..."
-	@gcc -o build/test/test_system.out -DSYSMON_SYSTEM_TEST \
-	    build/obj/utils.o src/system.c
-	@echo "$(PREFINFO) Running test_system ..."
-	@build/test/test_system.out
+build/obj/process.o: src/process.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building $@ ..."
+	@gcc -c -o $@ $^
 
-build/obj/system.o: build/obj/utils.o src/system.c
-	@echo "$(PREFINFO) Building system.o ..."
-	@gcc -c -o build/obj/system.o build/obj/utils.o src/system.c
+test_cpu: src/cpu.c build/obj/utils.o
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building test for $< ..."
+	@gcc -o build/test/$@.out -DSYSMON_CPU_TEST $^
+	@echo "$(PREFINFO) Running $@ ..."
+	@build/test/$@.out
+
+build/obj/cpu.o: src/cpu.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building $@ ..."
+	@gcc -c -o $@ $^
+
+test_system: src/system.c build/obj/utils.o
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building test for $< ..."
+	@gcc -o build/test/$@.out -DSYSMON_SYSTEM_TEST $^
+	@echo "$(PREFINFO) Running $@ ..."
+	@build/test/$@.out
+
+build/obj/system.o: src/system.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building $@ ..."
+	@gcc -c -o $@ $^
 
 build/obj/utils.o: src/utils.c
-	@echo "$(PREFINFO) Building utils.o ..."
-	@gcc -c -o build/obj/utils.o src/utils.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building $@ ..."
+	@gcc -c -o $@ $^
+
+clean:
+	$(DIR_GUARD)
+ifneq ($(wildcard build/obj/*),)
+	@rm -v build/obj/*
+endif
+ifneq ($(wildcard build/test/*),)
+	@rm -v build/test/*
+endif

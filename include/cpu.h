@@ -33,7 +33,7 @@ struct cpuinfo *sysmon_get_cpuinfo(int processor);
 struct cpusinfo {
     unsigned        processor_count;
     struct cpuinfo *cpuinfos;
-} __cpusinfo;
+};
 int cpusinfo_init(void);
 void cpusinfo_del(void);
 
@@ -50,6 +50,8 @@ struct cpusinfo *sysmon_get_cpusinfo(void);
 
 /**
  * sysmon_cpu_load/unload() - module initalize and cleanup
+ *
+ * sysmon_cpu_load() returns 0 on success.
  *
  * You MUST call this pair of functions on entering and leaving this module.
  */

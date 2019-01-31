@@ -20,7 +20,7 @@ const static size_t B_PER_GB = 1024 * 1024 * 1024;
 
 /**
  * procstat_fill() - fills a procstat struct with info read from
- *                   ``/proc/[pid]/stat``
+ * ``/proc/[pid]/stat``
  * @procstat: a struct procstat whose `pid` field is given
  *
  * procstat_fill() returns 0 on success, -1 on failure.
@@ -28,7 +28,7 @@ const static size_t B_PER_GB = 1024 * 1024 * 1024;
  * The `pid` field of the procstat must be given.
  */
 static int procstat_fill(struct procstat *procstat) {   // {{{
-    const static char statfmt[] = (
+    const static char statfmt[] = (     // {{{
         /* "%*d "          //  1. pid */
         /* // NOTE: the comm field may itself contain parenthesis!!! */
         /* "(%255[^)]) "   //  2. comm */
@@ -56,7 +56,7 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
         "%lu "          // 23. vsize
         "%ld "          // 24. rss
                         //     etc.
-    );
+    );      // }}}
     FILE *fp;
     char path[512];
     int retval;
@@ -91,6 +91,8 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
 }   // }}}
 
 /******* struct proclist Helpers *******/
+
+static struct proclist __proclist;
 
 static inline int procnode_fill(struct procnode *proc) {
     return procstat_fill(&proc->procstat);
@@ -129,31 +131,6 @@ static struct procnode *proclist_append(int pid) {      // {{{
     }
     __proclist.tail = procnode;
     return procnode;
-}   // }}}
-
-/**
- * proclist_del() - deletes a procnode struct from proclist
- * @proc: the procnode to be removed
- *
- * After calling proclist_del(), @proc will be free()-d and no longer valid.
- *
- * Fields of proclist is maintained by this function.
- */
-static void proclist_del(struct procnode *proc) {   // {{{
-    if (proc->next != NULL) {
-        proc->next->prev = proc->prev;
-    }
-    if (proc->prev != NULL) {
-        proc->prev->next = proc->next;
-    }
-    if (proc == __proclist.head) {
-        __proclist.head = proc->next;
-    }
-    if (proc == __proclist.tail) {
-        __proclist.tail = proc->prev;
-    }
-    free(proc);
-    return;
 }   // }}}
 
 /******* sysmon_process_refresh() Helpers *******/
@@ -268,6 +245,23 @@ void proclist_cleanup(void) {   // {{{
     return;
 }   // }}}
 
+void proclist_del(struct procnode *proc) {   // {{{
+    if (proc->next != NULL) {
+        proc->next->prev = proc->prev;
+    }
+    if (proc->prev != NULL) {
+        proc->prev->next = proc->next;
+    }
+    if (proc == __proclist.head) {
+        __proclist.head = proc->next;
+    }
+    if (proc == __proclist.tail) {
+        __proclist.tail = proc->prev;
+    }
+    free(proc);
+    return;
+}   // }}}
+
 static struct procnode *__proclist_iter_ptr;    // iter pointer as private member
 
 struct procstat *proclist_iter_begin(void) {     // {{{
@@ -306,7 +300,8 @@ struct procstat *proclist_find_by_name(const char *name) {      // {{{
     return NULL;
 }   // }}}
 
-struct proclist *sysmon_process_refresh(void (*cb)(void)) {     // {{{
+struct proclist *sysmon_process_refresh(void (*cb)(struct proclist *, void *),
+                                        void *cb_data) {    // {{{
     if (sysmon_process_refresh_dec() == NULL) {
         return NULL;
     }
@@ -314,7 +309,7 @@ struct proclist *sysmon_process_refresh(void (*cb)(void)) {     // {{{
         return NULL;
     }
     if (cb != NULL) {
-        cb();
+        cb(&__proclist, cb_data);
     }
     return &__proclist;
 }   // }}}
@@ -344,7 +339,7 @@ int main(const int argc, const char **argv) {
     printf("Testing %s():\n", "sysmon_process_refresh");
     sysmon_process_load();
     struct proclist *proclist = sysmon_process_hard_refresh();
-    proclist = sysmon_process_refresh(NULL);
+    proclist = sysmon_process_refresh(NULL, NULL);
     if (proclist != NULL) {
         for (struct procstat *procstat = proclist_iter_begin();
                 procstat != proclist_iter_end();

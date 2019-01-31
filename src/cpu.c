@@ -116,6 +116,8 @@ static int _get_processor_count(void) {
 
 /******* struct cpusinfo Helpers *******/
 
+static struct cpusinfo __cpusinfo;
+
 int cpusinfo_init(void) {
     int retval;
     memset(&__cpusinfo, 0, sizeof(struct cpusinfo));
