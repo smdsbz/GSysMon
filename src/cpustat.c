@@ -7,6 +7,8 @@
 #include "../include/cpustat.h"
 
 
+/******* Interface Implementation *******/
+
 struct single_cpustat *sysmon_get_cpustat(int id) {     // {{{
     static const char statfmt[] = (     // {{{
         "%*s "      // cpu name (cpu | cpuN)
@@ -225,10 +227,59 @@ struct cpustat *sysmon_get_cpustat_diff(void) {
 }
 
 
+/******* Calculation Helpers *******/
+
+static inline const struct single_cpustat *get_single_from_cpustat(
+        const struct cpustat *in, int cpuid) {
+    return (
+        (cpuid < 0) ?
+            &in->all
+        : (cpuid >= in->ncpus) ?
+            NULL
+        : &in->each[cpuid]
+    );
+}
+
+double cpustat_get_user_percentage(const struct cpustat *diff, int cpuid) {
+    const struct single_cpustat *single = get_single_from_cpustat(diff, cpuid);
+    if (single == NULL) {
+        return -1.0;
+    }
+    return (double)100.0 * (double)(single->user + single->nice)
+            / (double)single->total;
+}
+
+double cpustat_get_kernel_percentage(const struct cpustat *diff, int cpuid) {
+    const struct single_cpustat *single = get_single_from_cpustat(diff, cpuid);
+    if (single == NULL) {
+        return -1.0;
+    }
+    return (double)100.0 * (double)(single->system + single->irq + single->softirq)
+            / (double)single->total;
+}
+
+double cpustat_get_idle_percentage(const struct cpustat *diff, int cpuid) {
+    const struct single_cpustat *single = get_single_from_cpustat(diff, cpuid);
+    if (single == NULL) {
+        return -1.0;
+    }
+    return (double)100.0 * (double)(single->idle + single->iowait)
+            / (double)single->total;
+}
+
+double cpustat_get_usage_percentage(const struct cpustat *diff, int cpuid) {
+    const struct single_cpustat *single = get_single_from_cpustat(diff, cpuid);
+    if (single == NULL) {
+        return -1.0;
+    }
+    return (double)100.0 * (double)(single->total - single->idle - single->iowait)
+            / (double)single->total;
+}
+
+
 /******* Test *******/
 
 #if SYSMON_CPUSTAT_TEST
-/* #include <gtk/gtk.h> */
 #include <time.h>
 
 static inline void print_single_cpustat(const struct single_cpustat *const stat) {
@@ -284,9 +335,11 @@ int main(const int argc, const char **argv) {
     if (diff != NULL) {
         struct single_cpustat *stat = &diff->all;
         print_single_cpustat(stat);
+        printf(SYSMON_TEST_ESCAPE "usage: %.2lf\n", cpustat_get_usage_percentage(diff, -1));
         for (int id = 0; id != diff->ncpus; ++id) {
             stat = &diff->each[id];
             print_single_cpustat(stat);
+            printf(SYSMON_TEST_ESCAPE "usage: %.2lf\n", cpustat_get_usage_percentage(diff, id));
         }
     } else {
         printf(SYSMON_TEST_FAIL ": got %p\n", diff);
