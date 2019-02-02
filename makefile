@@ -5,6 +5,18 @@ DIR_GUARD	= @mkdir -vp build/obj build/test
 
 .PHONY: clean
 
+test_memory: src/memory.c build/obj/utils.o
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building test for $< ..."
+	@gcc -o build/test/$@.out -DSYSMON_MEMORY_TEST $^
+	@echo "$(PREFINFO) Running $@ ..."
+	@build/test/$@.out
+
+build/obj/memory.o: src/memory.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building $@ ..."
+	@gcc -c -o $@ $^
+
 test_cpustat: src/cpustat.c build/obj/utils.o
 	$(DIR_GUARD)
 	@echo "$(PREFINFO) Building test for $< ..."

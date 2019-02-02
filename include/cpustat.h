@@ -108,7 +108,11 @@ void cpustat_del(struct cpustat *cpustat);
 struct cpustat *sysmon_get_cpustat_diff(void);
 
 /**
- * [BUILDING]
+ * cpustat_get_*_percentage() - percentage calculation helper family
+ * @diff: diff result
+ * @cpuid: the target cpu, -1 to calculate on all
+ *
+ * Returns percentage values in range [0.0, 100.0].
  */
 double cpustat_get_user_percentage(const struct cpustat *diff, int cpuid);
 double cpustat_get_kernel_percentage(const struct cpustat *diff, int cpuid);

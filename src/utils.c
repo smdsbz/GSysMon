@@ -34,7 +34,7 @@ int freadline(FILE *fp, char *to, size_t bufsiz) {
     if (retval != 1) {
         return -1;
     }
-    ssize_t len = strlen(to); 
+    size_t len = strlen(to); 
     if (len == 0) {
         return 0;
     }
@@ -73,5 +73,26 @@ void rstrip(char *s) {
     for (; nospace >= 0 && isspace(s[nospace]); --nospace) ;
     s[nospace + 1] = '\0';
     return;
+}
+
+char *get_human_from_bytes(size_t b) {
+    static char str[256];
+    char unit[3] = { 'B', '\0', '\0' };
+    double disp = b;
+    if (disp / 1024.0 > 1.0) {
+        disp /= 1024.0;
+        unit[0] = 'K';
+        unit[1] = 'B';
+    }
+    if (disp / 1024.0 > 1.0) {
+        disp /= 1024.0;
+        unit[0] = 'M';
+    }
+    if (disp / 1024.0 > 1.0) {
+        disp /= 1024.0;
+        unit[0] = 'G';
+    }
+    sprintf(str, "%.2lf%s", disp, unit);
+    return str;
 }
 

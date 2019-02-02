@@ -23,12 +23,17 @@ static inline void cpuinfocpy(struct cpuinfo *dst,
  * Returns a pointer to a statically allocated cpuinfo struct, otherwise returns
  * NULL on error. If fails to read corresponding fields, they will stay zero-
  * initialized.
+ *
+ * sysmon_get_cpusinfo() MUST be called after sysmon_cpu_load().
  */
 struct cpuinfo *sysmon_get_cpuinfo(int processor);
 
 /**
  * In order to make this module portable, the number of `cpuinfo`s has to vary,
  * therefore introducing cpusinfo_init/del().
+ *
+ * However, it does NOT work and may cause segment fault when you are on a
+ * platform supporting hot-swappable cpu.
  */
 struct cpusinfo {
     unsigned        processor_count;

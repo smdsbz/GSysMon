@@ -126,4 +126,14 @@ static inline int isempty(char *s) {
     return (s[0] == '\0');
 }
 
+/**
+ * get_human_from_bytes() - convert @b to a human readable size
+ * @b
+ *
+ * get_human_from_bytes() returns a statically allocated string.
+ *
+ * Currently, the biggest unit is "GB".
+ */
+char *get_human_from_bytes(size_t b);
+
 #endif

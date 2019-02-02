@@ -5,60 +5,26 @@
 #include "../include/cpu.h"
 
 
-/******* Parsing Helpers *******/
-
-struct key_value {
-    char   *key;
-    char   *value;
-};
-
-static struct key_value *parse_line(const char *in) {
-    static char key[256];
-    static char val[1024];
-    static struct key_value kv;
-    // "%nc" in scanf-family is not null-terminated, thus cleaning is needed!
-    memset(val, 0, 1024);
-    int match_count = sscanf(in, "%255[^:]:%1023c", key, val);
-    strip(key);
-    strip(val);
-    /* printf("'%s' = '%s'\n", key, val); */
-    if (match_count == 0 || isempty(key)) {
-        return NULL;
-    }
-    kv.key = key;
-    if (match_count == 1 || isempty(val)) {
-        kv.value = NULL;
-    } else {
-        kv.value = val;
-    }
-    return &kv;
-}
-
 /******* Single Processor *******/
 
 struct cpuinfo *sysmon_get_cpuinfo(int processor) {     // {{{
     static struct cpuinfo cpuinfo;
     FILE *fp;
     char buf[1024];
-    struct key_value *kv;
-    // basic initializations, in case fopen() fails, at least we have a fallback
-    // state
     memset(&cpuinfo, 0, sizeof(struct cpuinfo));
     if ((fp = fopen("/proc/cpuinfo", "r")) == NULL) {
         perror("fopen");
         return NULL;
     }
     int curr_proc = -1;
-    unsigned found = 0;     // indicates whether corresponding field has been
-                            // filled: { proc, model, mhz, physid }
-    while (freadline(fp, buf, 1024) > 0) {
-        kv = parse_line(buf);
-        if (strequ(kv->key, "processor")) {
-            if (kv->value != NULL) {
-                sscanf(kv->value, "%d", &curr_proc);
-                if (curr_proc == processor) {
-                    cpuinfo.processor = curr_proc;
-                }
+    // indicates whether corresponding field has been filled:
+    // { proc, model, mhz, physid }
+    unsigned found = 0;
+    while (freadline(fp, buf, 1024) >= 0) {
+        if (sscanf(buf, "processor : %d", &curr_proc) == 1) {
+            if (curr_proc == processor) {
+                cpuinfo.processor = curr_proc;
+                found |= 8;
             }
             continue;
         }
@@ -67,32 +33,15 @@ struct cpuinfo *sysmon_get_cpuinfo(int processor) {     // {{{
         } else if (curr_proc > processor) {
             break;
         }
-        found |= 8;
-        if (strequ(kv->key, "model name")) {
-            if (kv->value != NULL) {
-                strcpy(cpuinfo.model_name, kv->value);
-                found |= 4;
-            } else {
-                cpuinfo.model_name[0] = '\0';
-            }
-            continue;
+        if (sscanf(buf, "model name : %255c", cpuinfo.model_name) == 1) {
+            found |= 4;
+        } else if (sscanf(buf, "cpu MHz : %lf", &cpuinfo.cpu_mhz) == 1) {
+            found |= 2;
+        } else if (sscanf(buf, "core id : %u", &cpuinfo.core_id) == 1) {
+            found |= 1;
         }
-        if (strequ(kv->key, "cpu MHz")) {
-            if (kv->value != NULL) {
-                sscanf(kv->value, "%lf", &cpuinfo.cpu_mhz);
-                found |= 2;
-            } else {
-                cpuinfo.cpu_mhz = 0.0;
-            }
-            continue;
-        }
-        if (strequ(kv->key, "core id")) {
-            if (kv->value != NULL) {
-                sscanf(kv->value, "%u", &cpuinfo.core_id);
-                found |= 1;
-            } else {
-                cpuinfo.core_id = 0;
-            }
+        if (found == 15) {
+            break;
         }
     }
     fclose(fp);
@@ -109,14 +58,12 @@ static int _get_processor_count(void) {
     int proc_cnt = 0;
     FILE *fp;
     char buf[1024];
-    struct key_value *kv;
     if ((fp = fopen("/proc/cpuinfo", "r")) == NULL) {
         perror("fopen");
         return -1;
     }
-    while (freadline(fp, buf, 1024) > 0) {
-        kv = parse_line(buf);
-        if (strequ(kv->key, "processor")) {
+    while (freadline(fp, buf, 1024) >= 0) {
+        if (str_starts_with(buf, "processor")) {
             ++proc_cnt;
         }
     }
@@ -157,6 +104,9 @@ void cpusinfo_del(void) {
 /******* Module Main Interfaces *******/
 
 struct cpusinfo *sysmon_get_cpusinfo(void) {
+    if (__cpusinfo.cpuinfos == NULL) {
+        return NULL;
+    }
     for (int idx = 0; idx != __cpusinfo.processor_count; ++idx) {
         struct cpuinfo *cpuinfo = sysmon_get_cpuinfo(idx);
         if (cpuinfo != NULL) {
