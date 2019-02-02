@@ -11,7 +11,8 @@ main: src/gmain.c build/obj/utils.o build/obj/system.o build/obj/cpu.o		\
 		build/obj/cpustat.o build/obj/memory.o
 	$(DIR_GUARD)
 	@echo "$(PREFINFO) Building application ..."
-	@gcc -o build/app/gsysmon $^
+	@gcc `pkg-config --cflags gtk+-3.0` -o build/app/gsysmon $^		\
+		`pkg-config --libs gtk+-3.0` -Wall
 	@echo "$(PREFINFO) Running application ..."
 	@build/app/gsysmon
 	@echo "$(PREFINFO) Quitted application ..."
