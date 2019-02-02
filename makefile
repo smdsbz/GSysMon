@@ -1,9 +1,20 @@
 GREEN		= \033[0;32m
 NC		= \033[0m
 PREFINFO	= $(GREEN)💬$(NC)
-DIR_GUARD	= @mkdir -vp build/obj build/test
+DIR_GUARD	= @mkdir -vp build/obj build/test build/app
 
-.PHONY: clean
+.PHONY: clean test_system test_cpu test_process test_process_callbacks		\
+	test_cpustat test_memory main
+
+main: src/gmain.c build/obj/utils.o build/obj/system.o build/obj/cpu.o		\
+		build/obj/process.o build/obj/process_callbacks.o		\
+		build/obj/cpustat.o build/obj/memory.o
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building application ..."
+	@gcc -o build/app/gsysmon $^
+	@echo "$(PREFINFO) Running application ..."
+	@build/app/gsysmon
+	@echo "$(PREFINFO) Quitted application ..."
 
 test_memory: src/memory.c build/obj/utils.o
 	$(DIR_GUARD)
@@ -90,4 +101,7 @@ ifneq ($(wildcard build/obj/*),)
 endif
 ifneq ($(wildcard build/test/*),)
 	@rm -v build/test/*
+endif
+ifneq ($(wildcard build/app/*),)
+	@rm -v build/app/*
 endif
