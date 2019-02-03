@@ -2,16 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <gtk/gtk.h>
 
 #include "../include/utils.h"
 #include "../include/system.h"
 #include "../include/cpu.h"
+#include "../include/process.h"
 
 
 GtkBuilder *builder = NULL;         // making it global makes things a lot more easier
 guint timeout_halfsec_src = 0;
+guint timeout_onesec_src = 0;
 struct cpusinfo *cpusinfo = NULL;
 
 static GObject *get_widget_by_id(const char *id)
@@ -54,7 +57,38 @@ static void on_search_toggle_clicked(GtkToolButton *btn, gpointer _)
 
 static void refresh_process_liststore(GtkListStore *ls)
 {   // {{{
-    // TODO
+    struct proclist *proclist = sysmon_process_refresh(NULL, NULL);
+    if (proclist == NULL) {
+        g_printerr("sysmon_process_refresh() failed!\n");
+        return;
+    }
+    enum {
+        COL_PID, COL_NAME, COL_STATE, COL_PPID, COL_NICE, COL_THREADS,
+        COL_VMEM, COL_RMEM, NCOLS
+    };
+    gtk_list_store_clear(ls);
+    GtkTreeIter treeiter;
+    for (struct procstat *stat = proclist_iter_begin();
+            stat != proclist_iter_end();
+            stat = proclist_iter_next()) {
+        gtk_list_store_append(ls, &treeiter);
+        char vmem[32], rmem[32];
+        sprintf(vmem, "%s", get_human_from_bytes(stat->vsize));
+        sprintf(rmem, "%s", get_human_from_bytes((size_t)stat->rss * getpagesize()));
+        gtk_list_store_set(
+            ls, &treeiter,
+            COL_PID, stat->pid,
+            COL_NAME, stat->comm,
+            COL_STATE, stat->state,
+            COL_PPID, stat->ppid,
+            COL_NICE, stat->nice,
+            COL_THREADS, stat->num_threads,
+            COL_VMEM, vmem,
+            COL_RMEM, rmem,
+            -1
+        );
+    }
+    return;
 }   // }}}
 
 static gboolean timeout_halfsec_fn(gpointer _)
@@ -82,6 +116,15 @@ static gboolean timeout_halfsec_fn(gpointer _)
     return G_SOURCE_CONTINUE;
 }   // }}}
 
+static gboolean timeout_onesec_fn(gpointer _)
+{   // {{{
+    // update process-page
+    refresh_process_liststore(
+        GTK_LIST_STORE(gtk_builder_get_object(builder, "process-liststore"))
+    );
+    return G_SOURCE_CONTINUE;
+}   // }}}
+
 static void on_destroy(GtkWidget *widget, gpointer _)
 {   // {{{
     gtk_main_quit();
@@ -90,6 +133,7 @@ static void on_destroy(GtkWidget *widget, gpointer _)
         timeout_halfsec_src = 0;
     }
     sysmon_cpu_unload();
+    sysmon_process_unload();
     return;
 }   // }}}
 
@@ -102,7 +146,7 @@ int main(int argc, char **argv) {
 
     GObject *main_window = get_widget_by_id("main-window");
     g_signal_connect(main_window, "destroy", G_CALLBACK(on_destroy), NULL);
-    gtk_window_set_default_size(GTK_WINDOW(main_window), 800, 500);
+    /* gtk_window_set_default_size(GTK_WINDOW(main_window), 800, 500); */
 
     // #search-toggle
     g_signal_connect(
@@ -208,6 +252,9 @@ int main(int argc, char **argv) {
     );
 
     g_timeout_add(500, timeout_halfsec_fn, NULL);
+    g_timeout_add(1000, timeout_onesec_fn, NULL);
+
+    sysmon_process_load();
 
     gtk_widget_show_all(GTK_WIDGET(main_window));
     gtk_main();

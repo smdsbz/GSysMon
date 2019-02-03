@@ -13,17 +13,19 @@
       <!-- column-name parent-pid -->
       <column type="gint"/>
       <!-- column-name nice -->
-      <column type="gint"/>
+      <column type="glong"/>
       <!-- column-name threads -->
       <column type="gulong"/>
       <!-- column-name virtual-memory -->
-      <column type="gulong"/>
+      <column type="gchararray"/>
       <!-- column-name resident-memory -->
-      <column type="gulong"/>
+      <column type="gchararray"/>
     </columns>
   </object>
   <object class="GtkWindow" id="main-window">
     <property name="can_focus">False</property>
+    <property name="default_width">800</property>
+    <property name="default_height">500</property>
     <property name="icon_name">computer-symbolic</property>
     <child type="titlebar">
       <object class="GtkHeaderBar">
@@ -155,63 +157,118 @@
             <property name="can_focus">False</property>
             <property name="transition_type">over-left-right</property>
             <child>
-              <object class="GtkTreeView">
+              <object class="GtkScrolledWindow">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="model">process-liststore</property>
-                <child internal-child="selection">
-                  <object class="GtkTreeSelection"/>
-                </child>
+                <property name="shadow_type">in</property>
                 <child>
-                  <object class="GtkTreeViewColumn">
-                    <property name="resizable">True</property>
-                    <property name="fixed_width">90</property>
-                    <property name="title" translatable="yes">PID</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn">
-                    <property name="resizable">True</property>
-                    <property name="sizing">fixed</property>
-                    <property name="fixed_width">120</property>
-                    <property name="title" translatable="yes">Name</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn">
-                    <property name="resizable">True</property>
-                    <property name="title" translatable="yes">State</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn">
-                    <property name="resizable">True</property>
-                    <property name="fixed_width">90</property>
-                    <property name="title" translatable="yes">Parent PID</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn">
-                    <property name="resizable">True</property>
-                    <property name="title" translatable="yes">Nice</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn">
-                    <property name="resizable">True</property>
-                    <property name="title" translatable="yes">Threads</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn">
-                    <property name="resizable">True</property>
-                    <property name="title" translatable="yes">Virtual Memory</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn">
-                    <property name="resizable">True</property>
-                    <property name="title" translatable="yes">Resident Memory</property>
+                  <object class="GtkTreeView">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="model">process-liststore</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection"/>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="resizable">True</property>
+                        <property name="fixed_width">90</property>
+                        <property name="title" translatable="yes">PID</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">0</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="resizable">True</property>
+                        <property name="sizing">fixed</property>
+                        <property name="fixed_width">120</property>
+                        <property name="title" translatable="yes">Name</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">1</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="resizable">True</property>
+                        <property name="title" translatable="yes">State</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">2</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="resizable">True</property>
+                        <property name="fixed_width">90</property>
+                        <property name="title" translatable="yes">Parent PID</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">3</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="resizable">True</property>
+                        <property name="title" translatable="yes">Nice</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">4</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="resizable">True</property>
+                        <property name="title" translatable="yes">Threads</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">5</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="resizable">True</property>
+                        <property name="title" translatable="yes">Virtual Memory</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">6</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkTreeViewColumn">
+                        <property name="resizable">True</property>
+                        <property name="title" translatable="yes">Resident Memory</property>
+                        <child>
+                          <object class="GtkCellRendererText"/>
+                          <attributes>
+                            <attribute name="text">7</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
