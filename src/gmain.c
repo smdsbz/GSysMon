@@ -9,13 +9,11 @@
 #include "../include/utils.h"
 #include "../include/system.h"
 #include "../include/cpu.h"
-#include "../include/process.h"
+#include "../include/process_mvc.h"
+#include "../include/process_callbacks.h"
 
 
-GtkBuilder *builder = NULL;         // making it global makes things a lot more easier
-guint timeout_halfsec_src = 0;
-guint timeout_onesec_src = 0;
-struct cpusinfo *cpusinfo = NULL;
+static GtkBuilder *builder = NULL;      // making it global makes things a lot more easier
 
 static GObject *get_widget_by_id(const char *id)
 {   // {{{
@@ -55,41 +53,34 @@ static void on_search_toggle_clicked(GtkToolButton *btn, gpointer _)
     );
 }   // }}}
 
-static void refresh_process_liststore(GtkListStore *ls)
+static void (*process_filter_fn)(struct proclist *, void *) = NULL;
+static char *process_filter_str = NULL;
+
+static void on_search_entry_changed(GtkSearchEntry *entry, gpointer method)
 {   // {{{
-    struct proclist *proclist = sysmon_process_refresh(NULL, NULL);
-    if (proclist == NULL) {
-        g_printerr("sysmon_process_refresh() failed!\n");
+    if (process_filter_str != NULL) {
+        g_free(process_filter_str);
+        process_filter_str = NULL;
+    }
+    process_filter_str = gtk_editable_get_chars(GTK_EDITABLE(entry), 0, -1);
+    // HACK: On clicking the 'X' button on the search bar, the search bar is set
+    //       to invisible and search entry is emptied.
+    //       (Is it that hard to emmit a "search-mode-changed" signal, GTK?)
+    if (strequ(process_filter_str, "")) {
+        g_free(process_filter_str);
+        process_filter_str = NULL;
+        process_filter_fn = NULL;
         return;
     }
-    enum {
-        COL_PID, COL_NAME, COL_STATE, COL_PPID, COL_NICE, COL_THREADS,
-        COL_VMEM, COL_RMEM, NCOLS
-    };
-    gtk_list_store_clear(ls);
-    GtkTreeIter treeiter;
-    for (struct procstat *stat = proclist_iter_begin();
-            stat != proclist_iter_end();
-            stat = proclist_iter_next()) {
-        gtk_list_store_append(ls, &treeiter);
-        char vmem[32], rmem[32];
-        sprintf(vmem, "%s", get_human_from_bytes(stat->vsize));
-        sprintf(rmem, "%s", get_human_from_bytes((size_t)stat->rss * getpagesize()));
-        gtk_list_store_set(
-            ls, &treeiter,
-            COL_PID, stat->pid,
-            COL_NAME, stat->comm,
-            COL_STATE, stat->state,
-            COL_PPID, stat->ppid,
-            COL_NICE, stat->nice,
-            COL_THREADS, stat->num_threads,
-            COL_VMEM, vmem,
-            COL_RMEM, rmem,
-            -1
-        );
+    if (strequ(method, "pid")) {
+        process_filter_fn = proclist_filter_by_pid_leading;
+    } else {
+        process_filter_fn = proclist_filter_by_name_fuzzy;
     }
-    return;
 }   // }}}
+
+static guint timeout_halfsec_src = 0;
+static struct cpusinfo *cpusinfo = NULL;
 
 static gboolean timeout_halfsec_fn(gpointer _)
 {   // {{{
@@ -116,11 +107,14 @@ static gboolean timeout_halfsec_fn(gpointer _)
     return G_SOURCE_CONTINUE;
 }   // }}}
 
+guint timeout_onesec_src = 0;
+
 static gboolean timeout_onesec_fn(gpointer _)
 {   // {{{
     // update process-page
-    refresh_process_liststore(
-        GTK_LIST_STORE(gtk_builder_get_object(builder, "process-liststore"))
+    gsysmon_process_mvc_refresh(
+        GTK_LIST_STORE(gtk_builder_get_object(builder, "process-liststore")),
+        process_filter_fn, process_filter_str
     );
     return G_SOURCE_CONTINUE;
 }   // }}}
@@ -132,11 +126,17 @@ static void on_destroy(GtkWidget *widget, gpointer _)
         g_source_remove(timeout_halfsec_src);
         timeout_halfsec_src = 0;
     }
+    if (process_filter_str != NULL) {
+        g_free(process_filter_str);
+    }
     sysmon_cpu_unload();
-    sysmon_process_unload();
+    gsysmon_process_mvc_unload();
     return;
 }   // }}}
 
+static void dummy(GtkWidget *_, gpointer __) {
+    g_print("dummy(): called\n");
+}
 
 int main(int argc, char **argv) {
 
@@ -146,8 +146,8 @@ int main(int argc, char **argv) {
 
     GObject *main_window = get_widget_by_id("main-window");
     g_signal_connect(main_window, "destroy", G_CALLBACK(on_destroy), NULL);
-    /* gtk_window_set_default_size(GTK_WINDOW(main_window), 800, 500); */
 
+    // search {{{
     // #search-toggle
     g_signal_connect(
         get_widget_by_id("search-toggle"),
@@ -168,7 +168,18 @@ int main(int argc, char **argv) {
         "activate", G_CALLBACK(on_search_choice_activate), "name"
     );
 
-    // system-page: #label-* (static)
+    // #search-entry-(pid|name)
+    g_signal_connect(
+        GTK_SEARCH_ENTRY(gtk_builder_get_object(builder, "search-entry-pid")),
+        "search-changed", G_CALLBACK(on_search_entry_changed), "pid"
+    );
+    g_signal_connect(
+        GTK_SEARCH_ENTRY(gtk_builder_get_object(builder, "search-entry-name")),
+        "search-changed", G_CALLBACK(on_search_entry_changed), "name"
+    );
+    // end search }}}
+
+    // system-page {{{
     gtk_label_set_xalign(
         GTK_LABEL(get_widget_by_id("label-hostname-title")),
         1.0
@@ -250,11 +261,12 @@ int main(int argc, char **argv) {
         GTK_LABEL(get_widget_by_id("label-cpu-frequency")),
         0.0
     );
+    // end system-page }}}
 
     g_timeout_add(500, timeout_halfsec_fn, NULL);
     g_timeout_add(1000, timeout_onesec_fn, NULL);
 
-    sysmon_process_load();
+    gsysmon_process_mvc_load();
 
     gtk_widget_show_all(GTK_WIDGET(main_window));
     gtk_main();

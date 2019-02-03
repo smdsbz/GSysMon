@@ -17,6 +17,6 @@ void proclist_filter_by_pid_leading(struct proclist *proclist, void *pid_lead);
  * proclist_filter_by_name_fuzzy() - filters proclist, leaving only procnodes
  * whose comm contains all chars presented in @name, but may not be consecutive
  */
-void porclist_filter_by_name_fuzzy(struct proclist *proclist, void *name);
+void proclist_filter_by_name_fuzzy(struct proclist *proclist, void *name);
 
 #endif
