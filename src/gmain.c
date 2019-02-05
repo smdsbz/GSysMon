@@ -89,16 +89,39 @@ static void on_button_kill_clicked(GtkToolButton *btn, gpointer _)
         get_widget_by_id("process-liststore")
     );
     GtkTreeIter iter;
-    // TODO: Popup an alert box before the button actually does something!
+    // if no process selected, prompt user
     if (!gtk_tree_selection_get_selected(sel, &mod, &iter)) {
-        g_print("on_search_entry_changed(): no selected row!\n");
+        GtkWidget *msgdialog = gtk_message_dialog_new(
+            GTK_WINDOW(get_widget_by_id("main-window")),
+            GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
+            "Please specify the process to be deleted by selecting it!"
+        );
+        gtk_dialog_run(GTK_DIALOG(msgdialog));
+        gtk_widget_destroy(msgdialog);
         return;
     }
+    // else, ask for confirmation
     int pid;
-    gtk_tree_model_get(mod, &iter, COL_PID, &pid, -1);
-    if (kill(pid, SIGKILL) == -1) {
-        perror("kill");
-        return;
+    char *comm;
+    gtk_tree_model_get(mod, &iter, COL_PID, &pid, COL_NAME, &comm, -1);
+    GtkWidget *confdialog = gtk_message_dialog_new(
+        GTK_WINDOW(get_widget_by_id("main-window")),
+        GTK_DIALOG_MODAL, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO,
+        "Are you sure you want to terminate '%s' (%d)?", comm, pid
+    );
+    int choice = gtk_dialog_run(GTK_DIALOG(confdialog));
+    gtk_widget_destroy(confdialog);
+    g_free(comm);
+    switch (choice) {
+        case GTK_RESPONSE_YES: {
+            if (kill(pid, SIGKILL) == -1) {
+                perror("kill");
+            }
+            break;
+        }
+        default: {
+            break;
+        }
     }
 }   // }}}
 

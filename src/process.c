@@ -62,7 +62,7 @@ static int procstat_fill(struct procstat *procstat) {   // {{{
     int retval;
     sprintf(path, "/proc/%d/stat", procstat->pid);
     if ((fp = fopen(path, "r")) == NULL) {
-        perror("fopen");
+        /* perror("fopen (may fail due to process no longer exists)"); */
         return -1;
     }
     // extract comm field
