@@ -21,6 +21,8 @@ static inline GObject *get_widget_by_id(const char *id)
     return gtk_builder_get_object(builder, id);
 }   // }}}
 
+/**** Search Related Callbacks ****/
+
 static void on_search_choice_activate(GtkMenuItem *item, gpointer method)
 {   // {{{
     char sbar_name[32];
@@ -80,6 +82,8 @@ static void on_search_entry_changed(GtkSearchEntry *entry, gpointer method)
     }
 }   // }}}
 
+/**** Program Related Callbacks ****/
+
 static void on_button_kill_clicked(GtkToolButton *btn, gpointer _)
 {   // {{{
     GtkTreeSelection *sel = GTK_TREE_SELECTION(
@@ -125,6 +129,44 @@ static void on_button_kill_clicked(GtkToolButton *btn, gpointer _)
     }
 }   // }}}
 
+static GThreadPool *prog_pool = NULL;
+
+static void new_program_fn(gpointer cmd_alloced, gpointer _)
+{   // {{{
+    int ret = system(cmd_alloced);      // blocked
+    g_print("'%s' finished with code %d!\n", (char *)cmd_alloced, ret);
+    free(cmd_alloced);
+}   // }}}
+
+static void on_button_new_program_clicked(gpointer _)
+{   // {{{
+    GtkDialog *dialog = GTK_DIALOG(get_widget_by_id("new-program-dialog"));
+    int ret = gtk_dialog_run(dialog);
+    switch (ret) {
+        case GTK_RESPONSE_APPLY: {
+            char *cmd_alloced = malloc(
+                gtk_entry_get_text_length(
+                    GTK_ENTRY(get_widget_by_id("new-cmdline-entry"))
+                ) + 1
+            );
+            strcpy(
+                cmd_alloced,
+                gtk_entry_get_text(
+                    GTK_ENTRY(get_widget_by_id("new-cmdline-entry"))
+                )
+            );
+            g_thread_pool_push(prog_pool, cmd_alloced, NULL);
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    gtk_widget_destroy(GTK_WIDGET(dialog));     // may not be correct, will see
+}   // }}}
+
+/**** GUI Update Related Callbacks ****/
+
 static guint timeout_halfsec_src = 0;
 static struct cpusinfo *cpusinfo = NULL;
 
@@ -165,6 +207,8 @@ static gboolean timeout_onesec_fn(gpointer _)
     return G_SOURCE_CONTINUE;
 }   // }}}
 
+/**** Application Exit Callback ****/
+
 static void on_destroy(GtkWidget *widget, gpointer _)
 {   // {{{
     gtk_main_quit();
@@ -177,12 +221,13 @@ static void on_destroy(GtkWidget *widget, gpointer _)
     }
     sysmon_cpu_unload();
     gsysmon_process_mvc_unload();
+    if (prog_pool != NULL) {
+        g_thread_pool_free(prog_pool, /*immediate=*/FALSE, /*wait_=*/TRUE);
+        prog_pool = NULL;
+    }
     return;
 }   // }}}
 
-static void dummy(GtkWidget *_, gpointer __) {
-    g_print("dummy(): called\n");
-}
 
 int main(int argc, char **argv) {
 
@@ -229,6 +274,10 @@ int main(int argc, char **argv) {
     g_signal_connect(
         get_widget_by_id("button-kill"),
         "clicked", G_CALLBACK(on_button_kill_clicked), NULL
+    );
+    g_signal_connect(
+        get_widget_by_id("button-new-program"),
+        "clicked", G_CALLBACK(on_button_new_program_clicked), NULL
     );
     // }}}
 
@@ -320,6 +369,8 @@ int main(int argc, char **argv) {
     g_timeout_add(1000, timeout_onesec_fn, NULL);
 
     gsysmon_process_mvc_load();
+
+    prog_pool = g_thread_pool_new(new_program_fn, NULL, -1, FALSE, NULL);
 
     gtk_widget_show_all(GTK_WIDGET(main_window));
     gtk_main();
