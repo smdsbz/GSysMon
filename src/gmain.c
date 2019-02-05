@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <gtk/gtk.h>
 
@@ -13,9 +14,9 @@
 #include "../include/process_callbacks.h"
 
 
-static GtkBuilder *builder = NULL;      // making it global makes things a lot more easier
+static GtkBuilder *builder = NULL;      // making it global makes things a lot much easier
 
-static GObject *get_widget_by_id(const char *id)
+static inline GObject *get_widget_by_id(const char *id)
 {   // {{{
     return gtk_builder_get_object(builder, id);
 }   // }}}
@@ -76,6 +77,28 @@ static void on_search_entry_changed(GtkSearchEntry *entry, gpointer method)
         process_filter_fn = proclist_filter_by_pid_leading;
     } else {
         process_filter_fn = proclist_filter_by_name_fuzzy;
+    }
+}   // }}}
+
+static void on_button_kill_clicked(GtkToolButton *btn, gpointer _)
+{   // {{{
+    GtkTreeSelection *sel = GTK_TREE_SELECTION(
+        get_widget_by_id("process-tree-selection")
+    );
+    GtkTreeModel *mod = GTK_TREE_MODEL(
+        get_widget_by_id("process-liststore")
+    );
+    GtkTreeIter iter;
+    // TODO: Popup an alert box before the button actually does something!
+    if (!gtk_tree_selection_get_selected(sel, &mod, &iter)) {
+        g_print("on_search_entry_changed(): no selected row!\n");
+        return;
+    }
+    int pid;
+    gtk_tree_model_get(mod, &iter, COL_PID, &pid, -1);
+    if (kill(pid, SIGKILL) == -1) {
+        perror("kill");
+        return;
     }
 }   // }}}
 
@@ -178,6 +201,13 @@ int main(int argc, char **argv) {
         "search-changed", G_CALLBACK(on_search_entry_changed), "name"
     );
     // end search }}}
+
+    // toolbar {{{
+    g_signal_connect(
+        get_widget_by_id("button-kill"),
+        "clicked", G_CALLBACK(on_button_kill_clicked), NULL
+    );
+    // }}}
 
     // system-page {{{
     gtk_label_set_xalign(
