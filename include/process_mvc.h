@@ -1,5 +1,5 @@
-#ifndef _SYSMON_PROCESS_MVC_H
-#define _SYSMON_PROCESS_MVC_H
+#ifndef _GSYSMON_PROCESS_MVC_H
+#define _GSYSMON_PROCESS_MVC_H
 
 #include <gtk/gtk.h>
 

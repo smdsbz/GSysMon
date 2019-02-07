@@ -96,8 +96,12 @@ void cpustat_del(struct cpustat *cpustat);
  * cpustat_get_diff() - get difference between the current cpustat and the last
  *
  * cpustat_get_diff() internally uses the module's private cpustat struct, if
- * it hasn't been given values, NULL will return; otherwise, it returns a
- * statically allocated cpustat struct containing the diffs.
+ * it hasn't been given values, NULL will return while the internal struct is
+ * prepared for the next call; otherwise, it returns a statically allocated
+ * cpustat struct containing the diffs.
+ *
+ * You may want to call cpustat_get_diff() immediately after module
+ * initialization.
  *
  * If other calls tempting to get cpustat on all cpus, namely
  * sysmon_get_cpustat_all(), happen between two cpustat_get_diff() calls, the

@@ -12,6 +12,8 @@
 #include "../include/cpu.h"
 #include "../include/process_mvc.h"
 #include "../include/process_callbacks.h"
+#include "../include/cpustat.h"
+#include "../include/record.h"
 
 
 static GtkBuilder *builder = NULL;      // making it global makes things a lot much easier
@@ -169,6 +171,7 @@ static void on_button_new_program_clicked(gpointer _)
 
 static guint timeout_halfsec_src = 0;
 static struct cpusinfo *cpusinfo = NULL;
+static struct record *cpurec = NULL;
 
 static gboolean timeout_halfsec_fn(gpointer _)
 {   // {{{
@@ -204,6 +207,18 @@ static gboolean timeout_onesec_fn(gpointer _)
         GTK_LIST_STORE(gtk_builder_get_object(builder, "process-liststore")),
         process_filter_fn, process_filter_str
     );
+    // update resource-page
+    struct cpustat *cpustat = sysmon_get_cpustat_diff();
+    record_push_lf(cpurec, cpustat_get_usage_percentage(cpustat, -1) / 100.0);
+    gtk_widget_queue_draw(GTK_WIDGET(get_widget_by_id("draw-area-cpu")));
+    return G_SOURCE_CONTINUE;
+}   // }}}
+
+static gboolean on_cpustat_draw(GtkWidget *widget, cairo_t *cr, gpointer _)
+{   // {{{
+    size_t width = gtk_widget_get_allocated_width(widget);
+    size_t height = gtk_widget_get_allocated_height(widget);
+    record_render(cpurec, cr, width, height);
     return G_SOURCE_CONTINUE;
 }   // }}}
 
@@ -221,6 +236,10 @@ static void on_destroy(GtkWidget *widget, gpointer _)
     }
     sysmon_cpu_unload();
     gsysmon_process_mvc_unload();
+    sysmon_cpustat_unload();
+    if (cpurec != NULL) {
+        record_destroy_with_data(cpurec);
+    }
     if (prog_pool != NULL) {
         g_thread_pool_free(prog_pool, /*immediate=*/FALSE, /*wait_=*/TRUE);
         prog_pool = NULL;
@@ -228,6 +247,7 @@ static void on_destroy(GtkWidget *widget, gpointer _)
     return;
 }   // }}}
 
+/**** Main Entry ****/
 
 int main(int argc, char **argv) {
 
@@ -365,10 +385,21 @@ int main(int argc, char **argv) {
     );
     // end system-page }}}
 
+    // resource-page {{{
+    g_signal_connect(
+        get_widget_by_id("draw-area-cpu"),
+        "draw", G_CALLBACK(on_cpustat_draw), NULL
+    );
+    // }}}
+
     g_timeout_add(500, timeout_halfsec_fn, NULL);
     g_timeout_add(1000, timeout_onesec_fn, NULL);
 
     gsysmon_process_mvc_load();
+
+    sysmon_cpustat_load();
+    sysmon_get_cpustat_diff();
+    cpurec = record_new(100, RECORD_TYPE_DOUBLE);
 
     prog_pool = g_thread_pool_new(new_program_fn, NULL, -1, FALSE, NULL);
 

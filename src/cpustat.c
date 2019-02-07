@@ -59,11 +59,6 @@ struct single_cpustat *sysmon_get_cpustat(int id) {     // {{{
     return &stat;
 }   // }}}
 
-// __cpustat_old: bakup of __cpustat_vol, used to record previous call results
-// __cpustat_vol: the volatile one
-static struct cpustat __cpustat_old = { .ncpus = 0, .each = NULL },
-                      __cpustat_vol = { .ncpus = 0, .each = NULL };
-
 /**
  * get_ncpus() - get cpu count from ``/proc/stat``
  *
@@ -93,6 +88,13 @@ static size_t get_ncpus(void) {
     fclose(fp);
     return ((ncpus == 0) ? 0 : ncpus - 1);      // discard the first total "cpu" line
 }
+
+// __cpustat_old: bakup of __cpustat_vol, used to record previous call results
+// __cpustat_vol: the volatile one
+// __cpustat_diff: diff result
+static struct cpustat __cpustat_old = { .ncpus = 0, .each = NULL },
+                      __cpustat_vol = { .ncpus = 0, .each = NULL },
+                      __cpustat_diff = { .ncpus = 0, .each = NULL };
 
 /**
  * sysmon_get_cpustat_all() gets latest cpu stats and stores it into __cpustat_vol.
@@ -130,6 +132,7 @@ struct cpustat *sysmon_get_cpustat_all(void) {
 int cpustat_init(void) {
     memset(&__cpustat_old, 0, sizeof(struct cpustat));
     memset(&__cpustat_vol, 0, sizeof(struct cpustat));
+    memset(&__cpustat_diff, 0, sizeof(struct cpustat));
     return 0;
 }
 
@@ -142,6 +145,10 @@ void cpustat_cleanup(void) {
         free(__cpustat_vol.each);
     }
     memset(&__cpustat_vol, 0, sizeof(struct cpustat));
+    if (__cpustat_diff.each != NULL) {
+        free(__cpustat_diff.each);
+    }
+    memset(&__cpustat_diff, 0, sizeof(struct cpustat));
     return;
 }
 
@@ -212,18 +219,24 @@ static int cpustat_sub_(struct cpustat *new, const struct cpustat *old) {
 
 struct cpustat *sysmon_get_cpustat_diff(void) {
     // check if previous stat exists, if not, it's not diff-able
-    if (__cpustat_vol.each == NULL) {
+    if (__cpustat_old.each == NULL) {
+        // fill __cpustat_old with data
+        if (sysmon_get_cpustat_all() == NULL) {
+            return NULL;
+        }
+        cpustatcpy(&__cpustat_old, &__cpustat_vol);
         return NULL;
     }
-    // bakup previous stats
-    cpustatcpy(&__cpustat_old, &__cpustat_vol);
-    // get new stats (to __cpustat_vol)
+    // get new stats to __cpustat_vol
     if (sysmon_get_cpustat_all() == NULL) {
         return NULL;
     }
-    // calculate diff
-    cpustat_sub_(&__cpustat_vol, &__cpustat_old);
-    return &__cpustat_vol;
+    // calculate diff to __cpustat_diff
+    cpustatcpy(&__cpustat_diff, &__cpustat_vol);
+    cpustat_sub_(&__cpustat_diff, &__cpustat_old);
+    // overwrite old stats with new
+    cpustatcpy(&__cpustat_old, &__cpustat_vol);
+    return &__cpustat_diff;
 }
 
 
@@ -329,6 +342,7 @@ int main(const int argc, const char **argv) {
     }
 
     printf("Testing %s():\n", "sysmon_get_cpustat_diff");
+    sysmon_get_cpustat_diff();
     printf(SYSMON_TEST_ESCAPE "sleeping for %.2lf seconds ...\n", 0.5);
     usleep(500000);
     struct cpustat *diff = sysmon_get_cpustat_diff();

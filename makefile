@@ -8,7 +8,8 @@ DIR_GUARD	= @mkdir -vp build/obj build/test build/app
 
 main: src/gmain.c build/obj/utils.o build/obj/system.o build/obj/cpu.o		\
 		build/obj/process.o build/obj/process_callbacks.o		\
-		build/obj/cpustat.o build/obj/memory.o build/obj/process_mvc.o
+		build/obj/cpustat.o build/obj/memory.o build/obj/process_mvc.o	\
+		build/obj/record.o
 	$(DIR_GUARD)
 	@echo "$(PREFINFO) Building application ..."
 	@gcc -o build/app/gsysmon $^ `pkg-config --cflags gtk+-3.0`		\
@@ -16,6 +17,18 @@ main: src/gmain.c build/obj/utils.o build/obj/system.o build/obj/cpu.o		\
 	@echo "$(PREFINFO) Running application ..."
 	@build/app/gsysmon
 	@echo "$(PREFINFO) Quitted application ..."
+
+test_record: src/record.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building test for $@ ..."
+	@gcc -o build/test/$@.out -DGSYSMON_RECORD_TEST $^			\
+		`pkg-config --cflags gtk+-3.0` `pkg-config --libs gtk+-3.0` -Wall
+	@build/test/$@.out
+
+build/obj/record.o: src/record.c
+	$(DIR_GUARD)
+	@echo "$(PREFINFO) Building $@ ..."
+	@gcc -c -o $@ $^ `pkg-config --cflags gtk+-3.0`
 
 build/obj/process_mvc.o: src/process_mvc.c
 	$(DIR_GUARD)
