@@ -58,18 +58,30 @@ static inline size_t get_y(double perc, size_t height) {
 }
 
 void record_render(struct record *rec, cairo_t *cr, size_t w, size_t h) {
-    cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
-    cairo_set_line_width(cr, 2.0);
-    // start drawing, from right to left, from latest to earliest
+    // draw outer border
+    cairo_set_source_rgb(cr, 0.2, 0.2, 0.2);
+    cairo_set_line_width(cr, 0.5);
+    cairo_move_to(cr, 1, 1);
+    cairo_line_to(cr, w - 1, 1);
+    cairo_line_to(cr, w - 1, h - 1);
+    cairo_line_to(cr, 1, h - 1);
+    cairo_line_to(cr, 1, 1);
+    // draw internal helper lines
+    for (double hor = 0.25; hor < 0.8; hor += 0.25) {
+        cairo_move_to(cr, 0, get_y(hor, h));
+        cairo_line_to(cr, w - 1, get_y(hor, h));
+    }
+    cairo_stroke(cr);
+    // draw content, from right to left, from latest to earliest
     GList *cursor = rec->data->head;
     if (cursor == NULL) {
-        cairo_stroke(cr);
         return;
     }
+    cairo_set_source_rgb(cr, 0.3, 0.8, 0.7);
+    cairo_set_line_width(cr, 2.0);
     size_t idx = 0;
     cairo_move_to(cr, get_x(idx++, rec->cap, w), get_y(*(double *)cursor->data, h));
     for (cursor = cursor->next; cursor != NULL; cursor = cursor->next, ++idx) {
-        /* g_print("drawing %.2lf at (%lu, %lu) (%lu)\n", *(double *)cursor->data, get_x(idx, rec->cap, w), get_y(*(double *)cursor->data, h), idx); */
         cairo_line_to(cr, get_x(idx, rec->cap, w), get_y(*(double *)cursor->data, h));
     }
     // finish drawing

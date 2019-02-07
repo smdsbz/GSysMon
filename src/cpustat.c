@@ -100,7 +100,7 @@ static struct cpustat __cpustat_old = { .ncpus = 0, .each = NULL },
  * sysmon_get_cpustat_all() gets latest cpu stats and stores it into __cpustat_vol.
  */
 struct cpustat *sysmon_get_cpustat_all(void) {
-    // prepare `ncpus` and `each`
+    // prepare `ncpus` and `each` space
     size_t ncpus_new = get_ncpus();
     if (__cpustat_vol.each != NULL) {
         if (__cpustat_vol.ncpus != ncpus_new) {
@@ -136,19 +136,17 @@ int cpustat_init(void) {
     return 0;
 }
 
+static void cpustat_destroy(struct cpustat *stat) {
+    if (stat->each != NULL) {
+        free(stat->each);
+    }
+    memset(stat, 0, sizeof(struct cpustat));
+}
+
 void cpustat_cleanup(void) {
-    if (__cpustat_old.each != NULL) {
-        free(__cpustat_old.each);
-    }
-    memset(&__cpustat_old, 0, sizeof(struct cpustat));
-    if (__cpustat_vol.each != NULL) {
-        free(__cpustat_vol.each);
-    }
-    memset(&__cpustat_vol, 0, sizeof(struct cpustat));
-    if (__cpustat_diff.each != NULL) {
-        free(__cpustat_diff.each);
-    }
-    memset(&__cpustat_diff, 0, sizeof(struct cpustat));
+    cpustat_destroy(&__cpustat_old);
+    cpustat_destroy(&__cpustat_vol);
+    cpustat_destroy(&__cpustat_diff);
     return;
 }
 
@@ -171,7 +169,7 @@ struct cpustat *cpustatcpy(struct cpustat *dst, const struct cpustat *src) {
     return dst;
 }
 
-void cpustat_del(struct cpustat *cpustat) {
+void cpustat_free(struct cpustat *cpustat) {
     if (cpustat->each != NULL) {
         free(cpustat->each);
     }

@@ -87,10 +87,10 @@ struct cpustat *sysmon_get_cpustat_all(void);
 struct cpustat *cpustatcpy(struct cpustat *dst, const struct cpustat *src);
 
 /**
- * cpustat_del() - frees @cpustat
+ * cpustat_free() - frees @cpustat
  * @cpustat
  */
-void cpustat_del(struct cpustat *cpustat);
+void cpustat_free(struct cpustat *cpustat);
 
 /**
  * cpustat_get_diff() - get difference between the current cpustat and the last
