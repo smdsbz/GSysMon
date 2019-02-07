@@ -179,24 +179,50 @@ static struct record *swaprec = NULL;
 static gboolean timeout_halfsec_fn(gpointer _)
 {   // {{{
     // update system-page
-    char uptime_str[32];
-    sprintf(uptime_str, "%.2lf", sysmon_get_uptime()->uptime);
+    char str[256];
+    sprintf(str, "%.2lf", sysmon_get_uptime()->uptime);
     gtk_label_set_label(
         GTK_LABEL(get_widget_by_id("label-system-uptime")),
-        uptime_str
+        str
     );
     cpusinfo = sysmon_get_cpusinfo();
-    char cpus_freq[256] = "";
+    str[0] = '\0';
     for (int idx = 0; idx != cpusinfo->processor_count; ++idx) {
         char cpu_freq[16];
         sprintf(cpu_freq, "%.2lf, ", cpusinfo->cpuinfos[idx].cpu_mhz);
-        strcat(cpus_freq, cpu_freq);
+        strcat(str, cpu_freq);
     }
-    cpus_freq[strlen(cpus_freq) - 1] = '\0';
-    cpus_freq[strlen(cpus_freq) - 2] = '\0';
+    /* str[strlen(str) - 1] = '\0'; */
+    str[strlen(str) - 2] = '\0';
     gtk_label_set_label(
         GTK_LABEL(get_widget_by_id("label-cpu-frequency")),
-        cpus_freq
+        str
+    );
+    // update statusbar
+    if (cpurec->data->head == NULL) {
+        sprintf(str, "-- %%");
+    } else {
+        sprintf(str, "%.2lf %%", *(double *)cpurec->data->head->data * 100.0);
+    }
+    gtk_label_set_label(
+        GTK_LABEL(get_widget_by_id("label-statusbar-cpu")),
+        str
+    );
+    if (memrec->data->head == NULL) {
+        sprintf(str, "-- %%");
+    } else {
+        sprintf(str, "%.2lf %%", *(double *)memrec->data->head->data * 100.0);
+    }
+    gtk_label_set_label(
+        GTK_LABEL(get_widget_by_id("label-statusbar-mem")),
+        str
+    );
+    time_t time_ = time(NULL);
+    char *timestr = ctime(&time_);
+    remove_trailing_newline(timestr);
+    gtk_label_set_label(
+        GTK_LABEL(get_widget_by_id("label-statusbar-time")),
+        timestr
     );
     return G_SOURCE_CONTINUE;
 }   // }}}
@@ -427,8 +453,28 @@ int main(int argc, char **argv) {
     );
     // }}}
 
-    g_timeout_add(500, timeout_halfsec_fn, NULL);
-    g_timeout_add(1000, timeout_onesec_fn, NULL);
+    // statusbar {{{
+    gtk_label_set_xalign(
+        GTK_LABEL(get_widget_by_id("label-statusbar-cpu-title")),
+        1.0
+    );
+    gtk_label_set_xalign(
+        GTK_LABEL(get_widget_by_id("label-statusbar-cpu")),
+        0.0
+    );
+    gtk_label_set_xalign(
+        GTK_LABEL(get_widget_by_id("label-statusbar-mem-title")),
+        1.0
+    );
+    gtk_label_set_xalign(
+        GTK_LABEL(get_widget_by_id("label-statusbar-mem")),
+        0.0
+    );
+    gtk_label_set_xalign(
+        GTK_LABEL(get_widget_by_id("label-statusbar-time")),
+        1.0
+    );
+    // }}}
 
     gsysmon_process_mvc_load();
 
@@ -439,6 +485,9 @@ int main(int argc, char **argv) {
     swaprec = record_new(100, RECORD_TYPE_DOUBLE);
 
     prog_pool = g_thread_pool_new(new_program_fn, NULL, -1, FALSE, NULL);
+
+    g_timeout_add(500, timeout_halfsec_fn, NULL);
+    g_timeout_add(1000, timeout_onesec_fn, NULL);
 
     gtk_widget_show_all(GTK_WIDGET(main_window));
     gtk_main();

@@ -70,6 +70,12 @@ static inline int record_is_overflowing(struct record *rec) {
  */
 int record_push_discard_overflow(struct record *rec, void *data_alloced);
 
+/**
+ * record_push_lf() - pushes a double data @d to @rec
+ * @d: value of the double
+ *
+ * Helper of record_push_discard_overflow().
+ */
 static inline int record_push_lf(struct record *rec, double d) {
     double *cell = malloc(sizeof(double));
     *cell = d;
@@ -77,7 +83,6 @@ static inline int record_push_lf(struct record *rec, double d) {
 }
 
 /**
- * [BUILDING]
  * record_render() - renders data in @rec to @cr
  * @rec
  * @cr
