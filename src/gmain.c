@@ -168,6 +168,26 @@ static void on_button_new_program_clicked(gpointer _)
     gtk_widget_destroy(GTK_WIDGET(dialog));     // may not be correct, will see
 }   // }}}
 
+static void on_button_nuke_clicked(gpointer _)
+{   // {{{
+    GtkWidget *confdialog = gtk_message_dialog_new(
+        GTK_WINDOW(get_widget_by_id("main-window")),
+        GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_YES_NO,
+        "Are you sure you want to shutdown your computer?"
+    );
+    int choice = gtk_dialog_run(GTK_DIALOG(confdialog));
+    gtk_widget_destroy(confdialog);
+    switch (choice) {
+        case GTK_RESPONSE_YES: {
+            system("shutdown -h now");
+            // will not survive this line
+        }
+        default: {
+            break;
+        }
+    }
+}   // }}}
+
 /**** GUI Update Related Callbacks ****/
 
 static guint timeout_halfsec_src = 0;
@@ -351,6 +371,10 @@ int main(int argc, char **argv) {
     g_signal_connect(
         get_widget_by_id("button-new-program"),
         "clicked", G_CALLBACK(on_button_new_program_clicked), NULL
+    );
+    g_signal_connect(
+        get_widget_by_id("button-nuke"),
+        "clicked", G_CALLBACK(on_button_nuke_clicked), NULL
     );
     // }}}
 
